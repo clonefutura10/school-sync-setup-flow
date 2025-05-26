@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,13 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Wand2, Plus, Trash2 } from "lucide-react";
-
-interface SubjectsStepProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  onStepComplete: (data: any) => void;
-  schoolId: string | null;
-}
+import { BaseStepProps } from '@/types/setup';
 
 const SAMPLE_SUBJECTS = [
   { name: "Mathematics", code: "MATH", department: "Science", description: "Algebra, Calculus, Statistics" },
@@ -24,7 +17,7 @@ const SAMPLE_SUBJECTS = [
   { name: "Physical Education", code: "PE", department: "Physical Education", description: "Sports, Fitness, Health" }
 ];
 
-export const SubjectsStep: React.FC<SubjectsStepProps> = ({
+export const SubjectsStep: React.FC<BaseStepProps> = ({
   onNext,
   onPrevious,
   onStepComplete,
