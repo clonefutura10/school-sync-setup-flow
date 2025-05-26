@@ -12,6 +12,11 @@ export const passDataToScheduler = (schoolData: any) => {
       academic_year: schoolData.academic_year,
       timezone: schoolData.timezone
     },
+    students: schoolData.students || [],
+    teachers: schoolData.teachers || [],
+    subjects: schoolData.subjects || [],
+    classes: schoolData.classes || [],
+    timeSlots: schoolData.timeSlots || [],
     setupTimestamp: new Date().toISOString()
   };
 
@@ -20,10 +25,15 @@ export const passDataToScheduler = (schoolData: any) => {
   localStorage.setItem('schedulerData', JSON.stringify(schedulerData));
   localStorage.setItem('setupComplete', 'true');
   
-  // Also store individual components
+  // Also store individual components for easier access
   localStorage.setItem('schoolInfo', JSON.stringify(schoolData));
+  localStorage.setItem('schoolStudents', JSON.stringify(schoolData.students || []));
+  localStorage.setItem('schoolTeachers', JSON.stringify(schoolData.teachers || []));
+  localStorage.setItem('schoolSubjects', JSON.stringify(schoolData.subjects || []));
+  localStorage.setItem('schoolClasses', JSON.stringify(schoolData.classes || []));
+  localStorage.setItem('schoolTimeSlots', JSON.stringify(schoolData.timeSlots || []));
   
-  console.log('Data passed to scheduler:', schedulerData);
+  console.log('Complete data passed to scheduler:', schedulerData);
 };
 
 export const getSchedulerData = () => {
@@ -36,7 +46,12 @@ export const getSchedulerData = () => {
       schedulerData: schedulerData ? JSON.parse(schedulerData) : null,
       setupSchoolId,
       schoolInfo: schoolInfo ? JSON.parse(schoolInfo) : null,
-      setupComplete: localStorage.getItem('setupComplete') === 'true'
+      setupComplete: localStorage.getItem('setupComplete') === 'true',
+      students: JSON.parse(localStorage.getItem('schoolStudents') || '[]'),
+      teachers: JSON.parse(localStorage.getItem('schoolTeachers') || '[]'),
+      subjects: JSON.parse(localStorage.getItem('schoolSubjects') || '[]'),
+      classes: JSON.parse(localStorage.getItem('schoolClasses') || '[]'),
+      timeSlots: JSON.parse(localStorage.getItem('schoolTimeSlots') || '[]')
     };
   } catch (error) {
     console.error('Error getting scheduler data:', error);
@@ -50,4 +65,9 @@ export const clearSchedulerData = () => {
   localStorage.removeItem('setupComplete');
   localStorage.removeItem('schoolInfo');
   localStorage.removeItem('schoolId');
+  localStorage.removeItem('schoolStudents');
+  localStorage.removeItem('schoolTeachers');
+  localStorage.removeItem('schoolSubjects');
+  localStorage.removeItem('schoolClasses');
+  localStorage.removeItem('schoolTimeSlots');
 };

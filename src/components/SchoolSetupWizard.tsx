@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,15 +45,36 @@ export const SchoolSetupWizard = () => {
   };
 
   const handleStepComplete = (stepData: any) => {
-    setSchoolData(prev => ({ ...prev, ...stepData }));
+    // Accumulate all setup data
+    const updatedSchoolData = { ...schoolData, ...stepData };
+    setSchoolData(updatedSchoolData);
     console.log('Step completed with data:', stepData);
+    console.log('Complete school data so far:', updatedSchoolData);
     
     // Handle school creation if it's the first step and contains school ID
     if (stepData.schoolId) {
       setSchoolId(stepData.schoolId);
       localStorage.setItem('schoolId', stepData.schoolId);
-      // Store the complete setup data for the scheduler
-      localStorage.setItem('setupData', JSON.stringify({ ...schoolData, ...stepData }));
+    }
+    
+    // Store the complete setup data for the scheduler at each step
+    localStorage.setItem('setupData', JSON.stringify(updatedSchoolData));
+    
+    // Store individual step data
+    if (stepData.students) {
+      localStorage.setItem('schoolStudents', JSON.stringify(stepData.students));
+    }
+    if (stepData.teachers) {
+      localStorage.setItem('schoolTeachers', JSON.stringify(stepData.teachers));
+    }
+    if (stepData.subjects) {
+      localStorage.setItem('schoolSubjects', JSON.stringify(stepData.subjects));
+    }
+    if (stepData.classes) {
+      localStorage.setItem('schoolClasses', JSON.stringify(stepData.classes));
+    }
+    if (stepData.timeSlots) {
+      localStorage.setItem('schoolTimeSlots', JSON.stringify(stepData.timeSlots));
     }
   };
 
@@ -63,6 +83,17 @@ export const SchoolSetupWizard = () => {
     const savedSchoolId = localStorage.getItem('schoolId');
     if (savedSchoolId) {
       setSchoolId(savedSchoolId);
+    }
+
+    // Load existing setup data if available
+    const savedSetupData = localStorage.getItem('setupData');
+    if (savedSetupData) {
+      try {
+        const parsedData = JSON.parse(savedSetupData);
+        setSchoolData(parsedData);
+      } catch (error) {
+        console.error('Error parsing setup data:', error);
+      }
     }
   }, []);
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,7 +87,18 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
           description: "Please add at least one time slot with name, start time, and end time.",
           variant: "destructive",
         });
+        setLoading(false);
         return;
+      }
+
+      // First, delete existing time slots for this school to prevent duplicates
+      const { error: deleteError } = await supabase
+        .from('time_slots')
+        .delete()
+        .eq('school_id', schoolId);
+
+      if (deleteError) {
+        console.error('Error deleting existing time slots:', deleteError);
       }
 
       const timeSlotsWithSchoolId = validTimeSlots.map(slot => ({
@@ -122,29 +134,29 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Add Time Slots</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Add Time Slots</h2>
         <Button
           type="button"
           variant="outline"
           onClick={handleAutoFill}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 border-indigo-200"
         >
-          <Wand2 className="h-4 w-4" />
+          <Wand2 className="h-4 w-4 text-indigo-600" />
           Auto Fill Sample Data
         </Button>
       </div>
 
       <div className="space-y-4">
         {timeSlots.map((slot, index) => (
-          <Card key={index}>
+          <Card key={index} className="shadow-sm border-l-4 border-l-indigo-400 hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm">Time Slot {index + 1}</CardTitle>
+              <CardTitle className="text-sm text-indigo-700 font-medium">Time Slot {index + 1}</CardTitle>
               {timeSlots.length > 1 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => removeTimeSlot(index)}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -152,35 +164,38 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label>Name *</Label>
+                <Label className="text-sm font-medium text-gray-700">Name *</Label>
                 <Input
                   value={slot.name}
                   onChange={(e) => handleInputChange(index, 'name', e.target.value)}
                   placeholder="Period 1"
+                  className="border-gray-300 focus:border-indigo-400 focus:ring-indigo-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Start Time *</Label>
+                <Label className="text-sm font-medium text-gray-700">Start Time *</Label>
                 <Input
                   type="time"
                   value={slot.start_time}
                   onChange={(e) => handleInputChange(index, 'start_time', e.target.value)}
+                  className="border-gray-300 focus:border-indigo-400 focus:ring-indigo-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label>End Time *</Label>
+                <Label className="text-sm font-medium text-gray-700">End Time *</Label>
                 <Input
                   type="time"
                   value={slot.end_time}
                   onChange={(e) => handleInputChange(index, 'end_time', e.target.value)}
+                  className="border-gray-300 focus:border-indigo-400 focus:ring-indigo-400"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Type</Label>
+                <Label className="text-sm font-medium text-gray-700">Type</Label>
                 <select
                   value={slot.type}
                   onChange={(e) => handleInputChange(index, 'type', e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2"
                 >
                   <option value="regular">Regular</option>
                   <option value="break">Break</option>
@@ -195,18 +210,22 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
           type="button"
           variant="outline"
           onClick={addTimeSlot}
-          className="w-full flex items-center gap-2"
+          className="w-full flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700"
         >
           <Plus className="h-4 w-4" />
           Add Another Time Slot
         </Button>
       </div>
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious}>
+      <div className="flex justify-between pt-6">
+        <Button variant="outline" onClick={onPrevious} className="px-8">
           Previous
         </Button>
-        <Button onClick={handleSubmit} disabled={loading}>
+        <Button 
+          onClick={handleSubmit} 
+          disabled={loading}
+          className="px-8 bg-indigo-600 hover:bg-indigo-700"
+        >
           {loading ? 'Saving...' : 'Next Step'}
         </Button>
       </div>
