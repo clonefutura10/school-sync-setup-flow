@@ -75,7 +75,13 @@ export const SchoolSetupWizard = () => {
   };
 
   const schoolInfoProps: SchoolInfoStepProps = {
-    ...baseProps,
+    onNext: handleNext,
+    onPrevious: handlePrevious,
+    onStepComplete: handleStepComplete,
+    schoolId,
+    currentStep,
+    totalSteps: STEPS.length,
+    schoolData,
     onSchoolCreated: handleSchoolCreated,
   };
 

@@ -1,34 +1,43 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, ExternalLink } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
+import { DataExport } from '../DataExport';
 
 export const SetupComplete: React.FC<BaseStepProps> = ({
   onPrevious,
+  schoolId,
   schoolData
 }) => {
   const handleGoToScheduler = () => {
-    // Redirect to the scheduler application
+    // Store school ID for the scheduler app
+    if (schoolId) {
+      localStorage.setItem('setupSchoolId', schoolId);
+    }
     window.open('https://chrono-school-scheduler-plus.lovable.app/', '_blank');
   };
 
   const handleStartOver = () => {
     localStorage.removeItem('schoolId');
+    localStorage.removeItem('setupSchoolId');
     window.location.reload();
   };
 
   return (
-    <div className="space-y-6 text-center">
-      <div className="flex justify-center">
-        <CheckCircle className="h-24 w-24 text-green-500" />
-      </div>
+    <div className="space-y-6">
+      <div className="text-center space-y-4">
+        <div className="flex justify-center">
+          <CheckCircle className="h-24 w-24 text-green-500" />
+        </div>
 
-      <div>
-        <h2 className="text-2xl font-bold text-green-700 mb-2">Setup Complete!</h2>
-        <p className="text-gray-600">
-          Congratulations! Your school has been successfully set up with all the necessary information.
-        </p>
+        <div>
+          <h2 className="text-2xl font-bold text-green-700 mb-2">Setup Complete!</h2>
+          <p className="text-gray-600">
+            Congratulations! Your school has been successfully set up with all the necessary information.
+          </p>
+        </div>
       </div>
 
       <Card>
@@ -65,7 +74,9 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
+      {schoolId && <DataExport schoolId={schoolId} />}
+
+      <div className="space-y-4 text-center">
         <p className="text-lg font-medium">
           Your school data is ready! You can now proceed to the scheduling system.
         </p>
