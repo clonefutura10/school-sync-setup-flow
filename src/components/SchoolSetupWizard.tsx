@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,8 +92,8 @@ export const SchoolSetupWizard = () => {
 
         <Card>
           <CardContent className="p-6">
-            {currentStepConfig.needsSchoolCreated ? (
-              <CurrentStepComponent
+            {currentStep === 1 ? (
+              <SchoolInfoStep
                 {...baseProps}
                 onSchoolCreated={handleSchoolCreated}
               />
