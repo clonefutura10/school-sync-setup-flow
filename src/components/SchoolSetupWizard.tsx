@@ -62,33 +62,33 @@ export const SchoolSetupWizard = () => {
     }
   }, []);
 
-  const CurrentStepComponent = STEPS[currentStep - 1].component;
-
-  const baseProps: BaseStepProps = {
-    onNext: handleNext,
-    onPrevious: handlePrevious,
-    onStepComplete: handleStepComplete,
-    schoolId,
-    currentStep,
-    totalSteps: STEPS.length,
-    schoolData,
-  };
-
-  const schoolInfoProps: SchoolInfoStepProps = {
-    onNext: handleNext,
-    onPrevious: handlePrevious,
-    onStepComplete: handleStepComplete,
-    schoolId,
-    currentStep,
-    totalSteps: STEPS.length,
-    schoolData,
-    onSchoolCreated: handleSchoolCreated,
-  };
-
   const renderCurrentStep = () => {
+    const CurrentStepComponent = STEPS[currentStep - 1].component;
+    
     if (currentStep === 1) {
+      // Special handling for SchoolInfoStep with additional props
+      const schoolInfoProps: SchoolInfoStepProps = {
+        onNext: handleNext,
+        onPrevious: handlePrevious,
+        onStepComplete: handleStepComplete,
+        schoolId,
+        currentStep,
+        totalSteps: STEPS.length,
+        schoolData,
+        onSchoolCreated: handleSchoolCreated,
+      };
       return <SchoolInfoStep {...schoolInfoProps} />;
     } else {
+      // Standard handling for other steps
+      const baseProps: BaseStepProps = {
+        onNext: handleNext,
+        onPrevious: handlePrevious,
+        onStepComplete: handleStepComplete,
+        schoolId,
+        currentStep,
+        totalSteps: STEPS.length,
+        schoolData,
+      };
       return <CurrentStepComponent {...baseProps} />;
     }
   };
