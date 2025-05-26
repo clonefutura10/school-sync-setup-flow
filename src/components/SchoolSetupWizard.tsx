@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,7 +64,6 @@ export const SchoolSetupWizard = () => {
   }, []);
 
   const CurrentStepComponent = STEPS[currentStep - 1].component;
-  const currentStepConfig = STEPS[currentStep - 1];
 
   const baseProps: BaseStepProps = {
     onNext: handleNext,
@@ -73,6 +73,11 @@ export const SchoolSetupWizard = () => {
     currentStep,
     totalSteps: STEPS.length,
     schoolData,
+  };
+
+  const schoolInfoProps: SchoolInfoStepProps = {
+    ...baseProps,
+    onSchoolCreated: handleSchoolCreated,
   };
 
   return (
@@ -93,14 +98,9 @@ export const SchoolSetupWizard = () => {
         <Card>
           <CardContent className="p-6">
             {currentStep === 1 ? (
-              <SchoolInfoStep
-                {...baseProps}
-                onSchoolCreated={handleSchoolCreated}
-              />
+              <SchoolInfoStep {...schoolInfoProps} />
             ) : (
-              <CurrentStepComponent
-                {...baseProps}
-              />
+              <CurrentStepComponent {...baseProps} />
             )}
           </CardContent>
         </Card>
@@ -108,3 +108,4 @@ export const SchoolSetupWizard = () => {
     </div>
   );
 };
+
