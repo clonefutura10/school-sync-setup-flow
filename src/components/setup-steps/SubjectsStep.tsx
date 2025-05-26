@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,17 +57,19 @@ export const SubjectsStep: React.FC<BaseStepProps> = ({
   const handleAutoFill = () => {
     setSubjects(SAMPLE_SUBJECTS);
     toast({
-      title: "Auto-filled",
-      description: "Subject data has been auto-filled with sample data.",
+      title: "✨ Auto-filled successfully!",
+      description: "Sample subject data has been loaded into the form.",
+      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
     });
   };
 
   const handleSubmit = async () => {
     if (!schoolId) {
       toast({
-        title: "Error",
+        title: "❌ Missing Information",
         description: "School ID is required. Please complete the school information step first.",
         variant: "destructive",
+        className: "fixed top-4 right-4 w-96",
       });
       return;
     }
@@ -74,32 +77,53 @@ export const SubjectsStep: React.FC<BaseStepProps> = ({
     setLoading(true);
     try {
       const validSubjects = subjects.filter(subject => 
-        subject.name && subject.code
+        subject.name.trim() && subject.code.trim()
       );
 
       if (validSubjects.length === 0) {
         toast({
-          title: "Error",
+          title: "❌ Validation Error",
           description: "Please add at least one subject with name and code.",
           variant: "destructive",
+          className: "fixed top-4 right-4 w-96",
         });
+        setLoading(false);
         return;
+      }
+
+      // First, delete existing subjects for this school to prevent duplicates
+      const { error: deleteError } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('school_id', schoolId);
+
+      if (deleteError) {
+        console.error('Error deleting existing subjects:', deleteError);
+        // Continue anyway, insertion might still work
       }
 
       const subjectsWithSchoolId = validSubjects.map(subject => ({
         ...subject,
+        name: subject.name.trim(),
+        code: subject.code.trim(),
+        department: subject.department.trim() || null,
+        description: subject.description.trim() || null,
         school_id: schoolId
       }));
 
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('subjects')
         .insert(subjectsWithSchoolId);
 
-      if (error) throw error;
+      if (insertError) {
+        console.error('Detailed insert error:', insertError);
+        throw new Error(`Failed to save subjects: ${insertError.message}`);
+      }
 
       toast({
-        title: "Success",
+        title: "✅ Success!",
         description: `${validSubjects.length} subjects added successfully!`,
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
 
       onStepComplete({ subjects: validSubjects });
@@ -107,9 +131,10 @@ export const SubjectsStep: React.FC<BaseStepProps> = ({
     } catch (error) {
       console.error('Error saving subjects:', error);
       toast({
-        title: "Error",
-        description: "Failed to save subjects. Please try again.",
+        title: "❌ Save Failed",
+        description: error instanceof Error ? error.message : "Failed to save subjects. Please try again.",
         variant: "destructive",
+        className: "fixed top-4 right-4 w-96",
       });
     } finally {
       setLoading(false);
@@ -117,67 +142,76 @@ export const SubjectsStep: React.FC<BaseStepProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Add Subjects</h2>
+        <div>
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Add Subjects</h2>
+          <p className="text-gray-600">Configure the subjects taught in your school</p>
+        </div>
         <Button
           type="button"
           variant="outline"
           onClick={handleAutoFill}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 hover:from-purple-100 hover:to-indigo-100 transition-all duration-300"
         >
-          <Wand2 className="h-4 w-4" />
-          Auto Fill Sample Data
+          <Wand2 className="h-5 w-5 text-purple-600" />
+          <span className="font-medium text-purple-700">Auto Fill Sample Data</span>
         </Button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {subjects.map((subject, index) => (
-          <Card key={index}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm">Subject {index + 1}</CardTitle>
+          <Card key={index} className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
+              <CardTitle className="text-lg font-semibold text-gray-800">
+                Subject {index + 1}
+              </CardTitle>
               {subjects.length > 1 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => removeSubject(index)}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Subject Name *</Label>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-gray-700">Subject Name *</Label>
                 <Input
                   value={subject.name}
                   onChange={(e) => handleInputChange(index, 'name', e.target.value)}
-                  placeholder="Mathematics"
+                  placeholder="e.g., Mathematics"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Subject Code *</Label>
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-gray-700">Subject Code *</Label>
                 <Input
                   value={subject.code}
                   onChange={(e) => handleInputChange(index, 'code', e.target.value)}
-                  placeholder="MATH"
+                  placeholder="e.g., MATH"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Department</Label>
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-gray-700">Department</Label>
                 <Input
                   value={subject.department}
                   onChange={(e) => handleInputChange(index, 'department', e.target.value)}
-                  placeholder="Science"
+                  placeholder="e.g., Science"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-gray-700">Description</Label>
                 <Input
                   value={subject.description}
                   onChange={(e) => handleInputChange(index, 'description', e.target.value)}
-                  placeholder="Algebra, Calculus, Statistics"
+                  placeholder="e.g., Algebra, Calculus, Statistics"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                 />
               </div>
             </CardContent>
@@ -188,19 +222,34 @@ export const SubjectsStep: React.FC<BaseStepProps> = ({
           type="button"
           variant="outline"
           onClick={addSubject}
-          className="w-full flex items-center gap-2"
+          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-300"
         >
-          <Plus className="h-4 w-4" />
-          Add Another Subject
+          <Plus className="h-5 w-5 text-blue-600" />
+          <span className="font-medium text-blue-600">Add Another Subject</span>
         </Button>
       </div>
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious}>
-          Previous
+      <div className="flex justify-between pt-6 border-t">
+        <Button 
+          variant="outline" 
+          onClick={onPrevious}
+          className="px-8 py-3 border-gray-300 hover:bg-gray-50 transition-colors"
+        >
+          ← Previous
         </Button>
-        <Button onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Saving...' : 'Next Step'}
+        <Button 
+          onClick={handleSubmit} 
+          disabled={loading}
+          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
+        >
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Saving...
+            </div>
+          ) : (
+            'Next Step →'
+          )}
         </Button>
       </div>
     </div>

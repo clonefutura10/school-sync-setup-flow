@@ -92,7 +92,7 @@ export const SchoolSetupWizard = () => {
             const IconComponent = step.icon;
             
             return (
-              <React.Fragment key={step.id}>
+              <div key={step.id} className="flex items-center">
                 <div className={`flex flex-col items-center ${isCurrent ? 'scale-110' : ''} transition-transform duration-200`}>
                   <div className={`
                     w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300
@@ -118,7 +118,7 @@ export const SchoolSetupWizard = () => {
                     ${isCompleted ? 'bg-green-500' : 'bg-gray-300'}
                   `} />
                 )}
-              </React.Fragment>
+              </div>
             );
           })}
         </div>
