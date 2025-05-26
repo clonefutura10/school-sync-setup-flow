@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,13 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Wand2, Plus, Trash2 } from "lucide-react";
-
-interface TimeSlotsStepProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  onStepComplete: (data: any) => void;
-  schoolId: string | null;
-}
+import { BaseStepProps } from '@/types/setup';
 
 const SAMPLE_TIME_SLOTS = [
   { name: "Period 1", start_time: "08:00", end_time: "08:45", type: "regular" },
@@ -27,7 +20,7 @@ const SAMPLE_TIME_SLOTS = [
   { name: "Period 7", start_time: "13:30", end_time: "14:15", type: "regular" }
 ];
 
-export const TimeSlotsStep: React.FC<TimeSlotsStepProps> = ({
+export const TimeSlotsStep: React.FC<BaseStepProps> = ({
   onNext,
   onPrevious,
   onStepComplete,
