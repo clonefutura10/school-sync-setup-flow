@@ -12,7 +12,7 @@ import { SubjectsStep } from './setup-steps/SubjectsStep';
 import { ClassesStep } from './setup-steps/ClassesStep';
 import { TimeSlotsStep } from './setup-steps/TimeSlotsStep';
 import { SetupComplete } from './setup-steps/SetupComplete';
-import { BaseStepProps, SchoolInfoStepProps } from '@/types/setup';
+import { BaseStepProps } from '@/types/setup';
 
 const STEPS = [
   { id: 1, title: 'School Information', component: SchoolInfoStep, needsSchoolCreated: true },
@@ -47,11 +47,12 @@ export const SchoolSetupWizard = () => {
   const handleStepComplete = (stepData: any) => {
     setSchoolData(prev => ({ ...prev, ...stepData }));
     console.log('Step completed with data:', stepData);
-  };
-
-  const handleSchoolCreated = (id: string) => {
-    setSchoolId(id);
-    localStorage.setItem('schoolId', id);
+    
+    // Handle school creation if it's the first step and contains school ID
+    if (stepData.schoolId) {
+      setSchoolId(stepData.schoolId);
+      localStorage.setItem('schoolId', stepData.schoolId);
+    }
   };
 
   useEffect(() => {
@@ -65,32 +66,17 @@ export const SchoolSetupWizard = () => {
   const renderCurrentStep = () => {
     const CurrentStepComponent = STEPS[currentStep - 1].component;
     
-    if (currentStep === 1) {
-      // Special handling for SchoolInfoStep with additional props
-      const schoolInfoProps: SchoolInfoStepProps = {
-        onNext: handleNext,
-        onPrevious: handlePrevious,
-        onStepComplete: handleStepComplete,
-        schoolId,
-        currentStep,
-        totalSteps: STEPS.length,
-        schoolData,
-        onSchoolCreated: handleSchoolCreated,
-      };
-      return <SchoolInfoStep {...schoolInfoProps} />;
-    } else {
-      // Standard handling for other steps
-      const baseProps: BaseStepProps = {
-        onNext: handleNext,
-        onPrevious: handlePrevious,
-        onStepComplete: handleStepComplete,
-        schoolId,
-        currentStep,
-        totalSteps: STEPS.length,
-        schoolData,
-      };
-      return <CurrentStepComponent {...baseProps} />;
-    }
+    const baseProps: BaseStepProps = {
+      onNext: handleNext,
+      onPrevious: handlePrevious,
+      onStepComplete: handleStepComplete,
+      schoolId,
+      currentStep,
+      totalSteps: STEPS.length,
+      schoolData,
+    };
+    
+    return <CurrentStepComponent {...baseProps} />;
   };
 
   return (

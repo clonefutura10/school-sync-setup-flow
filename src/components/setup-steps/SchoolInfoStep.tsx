@@ -8,14 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Wand2 } from "lucide-react";
-
-interface SchoolInfoStepProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  onStepComplete: (data: any) => void;
-  onSchoolCreated: (id: string) => void;
-  schoolId: string | null;
-}
+import { BaseStepProps } from '@/types/setup';
 
 const SAMPLE_SCHOOLS = [
   {
@@ -47,10 +40,9 @@ const SAMPLE_SCHOOLS = [
   }
 ];
 
-export const SchoolInfoStep: React.FC<SchoolInfoStepProps> = ({
+export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   onNext,
   onStepComplete,
-  onSchoolCreated,
   schoolId
 }) => {
   const [formData, setFormData] = useState({
@@ -96,6 +88,7 @@ export const SchoolInfoStep: React.FC<SchoolInfoStepProps> = ({
           title: "Success",
           description: "School information updated successfully!",
         });
+        onStepComplete({ ...formData, schoolId });
       } else {
         // Create new school
         const { data, error } = await supabase
@@ -106,14 +99,13 @@ export const SchoolInfoStep: React.FC<SchoolInfoStepProps> = ({
 
         if (error) throw error;
         
-        onSchoolCreated(data.id);
         toast({
           title: "Success",
           description: "School created successfully!",
         });
+        onStepComplete({ ...formData, schoolId: data.id });
       }
 
-      onStepComplete(formData);
       onNext();
     } catch (error) {
       console.error('Error saving school:', error);

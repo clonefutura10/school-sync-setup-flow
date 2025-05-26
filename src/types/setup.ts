@@ -9,6 +9,5 @@ export interface BaseStepProps {
   schoolData: any;
 }
 
-export interface SchoolInfoStepProps extends BaseStepProps {
-  onSchoolCreated: (id: string) => void;
-}
+// Remove the separate SchoolInfoStepProps interface since it's causing issues
+// SchoolInfoStep will now use BaseStepProps and handle school creation internally
