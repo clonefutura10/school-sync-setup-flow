@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,13 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Wand2, Plus, Trash2 } from "lucide-react";
-
-interface ClassesStepProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  onStepComplete: (data: any) => void;
-  schoolId: string | null;
-}
+import { BaseStepProps } from '@/types/setup';
 
 const SAMPLE_CLASSES = [
   { name: "Grade 9 Section A", grade: "9", section: "A", room_number: "101", capacity: 30 },
@@ -24,7 +17,7 @@ const SAMPLE_CLASSES = [
   { name: "Grade 12 Science", grade: "12", section: "Science", room_number: "302", capacity: 25 }
 ];
 
-export const ClassesStep: React.FC<ClassesStepProps> = ({
+export const ClassesStep: React.FC<BaseStepProps> = ({
   onNext,
   onPrevious,
   onStepComplete,
