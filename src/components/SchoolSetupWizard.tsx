@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,20 +11,7 @@ import { SubjectsStep } from './setup-steps/SubjectsStep';
 import { ClassesStep } from './setup-steps/ClassesStep';
 import { TimeSlotsStep } from './setup-steps/TimeSlotsStep';
 import { SetupComplete } from './setup-steps/SetupComplete';
-
-interface BaseStepProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  onStepComplete: (data: any) => void;
-  schoolId: string | null;
-  currentStep: number;
-  totalSteps: number;
-  schoolData: any;
-}
-
-interface SchoolInfoStepProps extends BaseStepProps {
-  onSchoolCreated: (id: string) => void;
-}
+import { BaseStepProps, SchoolInfoStepProps } from '@/types/setup';
 
 const STEPS = [
   { id: 1, title: 'School Information', component: SchoolInfoStep, needsSchoolCreated: true },

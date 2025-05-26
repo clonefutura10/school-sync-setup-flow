@@ -1,20 +1,10 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, ExternalLink } from "lucide-react";
+import { BaseStepProps } from '@/types/setup';
 
-interface SetupCompleteProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  onStepComplete: (data: any) => void;
-  schoolId: string | null;
-  currentStep: number;
-  totalSteps: number;
-  schoolData: any;
-}
-
-export const SetupComplete: React.FC<SetupCompleteProps> = ({
+export const SetupComplete: React.FC<BaseStepProps> = ({
   onPrevious,
   schoolData
 }) => {
