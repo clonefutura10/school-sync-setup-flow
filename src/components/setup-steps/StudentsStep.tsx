@@ -15,6 +15,9 @@ interface StudentsStepProps {
   onPrevious: () => void;
   onStepComplete: (data: any) => void;
   schoolId: string | null;
+  currentStep: number;
+  totalSteps: number;
+  schoolData: any;
 }
 
 const SAMPLE_STUDENTS = [

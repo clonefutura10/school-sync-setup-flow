@@ -5,7 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, ExternalLink } from "lucide-react";
 
 interface SetupCompleteProps {
+  onNext: () => void;
   onPrevious: () => void;
+  onStepComplete: (data: any) => void;
+  schoolId: string | null;
+  currentStep: number;
+  totalSteps: number;
   schoolData: any;
 }
 

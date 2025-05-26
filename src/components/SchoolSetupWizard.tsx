@@ -13,14 +13,28 @@ import { ClassesStep } from './setup-steps/ClassesStep';
 import { TimeSlotsStep } from './setup-steps/TimeSlotsStep';
 import { SetupComplete } from './setup-steps/SetupComplete';
 
+interface BaseStepProps {
+  onNext: () => void;
+  onPrevious: () => void;
+  onStepComplete: (data: any) => void;
+  schoolId: string | null;
+  currentStep: number;
+  totalSteps: number;
+  schoolData: any;
+}
+
+interface SchoolInfoStepProps extends BaseStepProps {
+  onSchoolCreated: (id: string) => void;
+}
+
 const STEPS = [
-  { id: 1, title: 'School Information', component: SchoolInfoStep },
-  { id: 2, title: 'Students', component: StudentsStep },
-  { id: 3, title: 'Teachers', component: TeachersStep },
-  { id: 4, title: 'Subjects', component: SubjectsStep },
-  { id: 5, title: 'Classes', component: ClassesStep },
-  { id: 6, title: 'Time Slots', component: TimeSlotsStep },
-  { id: 7, title: 'Complete', component: SetupComplete },
+  { id: 1, title: 'School Information', component: SchoolInfoStep, needsSchoolCreated: true },
+  { id: 2, title: 'Students', component: StudentsStep, needsSchoolCreated: false },
+  { id: 3, title: 'Teachers', component: TeachersStep, needsSchoolCreated: false },
+  { id: 4, title: 'Subjects', component: SubjectsStep, needsSchoolCreated: false },
+  { id: 5, title: 'Classes', component: ClassesStep, needsSchoolCreated: false },
+  { id: 6, title: 'Time Slots', component: TimeSlotsStep, needsSchoolCreated: false },
+  { id: 7, title: 'Complete', component: SetupComplete, needsSchoolCreated: false },
 ];
 
 export const SchoolSetupWizard = () => {
@@ -62,6 +76,17 @@ export const SchoolSetupWizard = () => {
   }, []);
 
   const CurrentStepComponent = STEPS[currentStep - 1].component;
+  const currentStepConfig = STEPS[currentStep - 1];
+
+  const baseProps: BaseStepProps = {
+    onNext: handleNext,
+    onPrevious: handlePrevious,
+    onStepComplete: handleStepComplete,
+    schoolId,
+    currentStep,
+    totalSteps: STEPS.length,
+    schoolData,
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -80,16 +105,16 @@ export const SchoolSetupWizard = () => {
 
         <Card>
           <CardContent className="p-6">
-            <CurrentStepComponent
-              onNext={handleNext}
-              onPrevious={handlePrevious}
-              onStepComplete={handleStepComplete}
-              onSchoolCreated={handleSchoolCreated}
-              schoolId={schoolId}
-              currentStep={currentStep}
-              totalSteps={STEPS.length}
-              schoolData={schoolData}
-            />
+            {currentStepConfig.needsSchoolCreated ? (
+              <CurrentStepComponent
+                {...baseProps}
+                onSchoolCreated={handleSchoolCreated}
+              />
+            ) : (
+              <CurrentStepComponent
+                {...baseProps}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
