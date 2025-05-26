@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,6 +79,14 @@ export const SchoolSetupWizard = () => {
     onSchoolCreated: handleSchoolCreated,
   };
 
+  const renderCurrentStep = () => {
+    if (currentStep === 1) {
+      return <SchoolInfoStep {...schoolInfoProps} />;
+    } else {
+      return <CurrentStepComponent {...baseProps} />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-4xl mx-auto">
@@ -97,15 +104,10 @@ export const SchoolSetupWizard = () => {
 
         <Card>
           <CardContent className="p-6">
-            {currentStep === 1 ? (
-              <SchoolInfoStep {...schoolInfoProps} />
-            ) : (
-              <CurrentStepComponent {...baseProps} />
-            )}
+            {renderCurrentStep()}
           </CardContent>
         </Card>
       </div>
     </div>
   );
 };
-
