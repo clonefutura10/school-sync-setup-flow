@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,8 +102,9 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
   const handleAutoFill = () => {
     setTeachers(SAMPLE_TEACHERS);
     toast({
-      title: "Auto-filled",
+      title: "Auto-filled successfully!",
       description: "Teacher data has been auto-filled with sample data.",
+      className: "fixed top-4 right-4 z-50",
     });
   };
 
@@ -133,14 +135,16 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
       setTeachers(teacherData);
       setBulkData('');
       toast({
-        title: "Success",
+        title: "Import successful!",
         description: `Imported ${teacherData.length} teachers from CSV data.`,
+        className: "fixed top-4 right-4 z-50",
       });
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Import failed",
         description: "Failed to parse CSV data. Please check the format.",
         variant: "destructive",
+        className: "fixed top-4 right-4 z-50",
       });
     }
   };
@@ -163,6 +167,7 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
         title: "Error",
         description: "School ID is required. Please complete the school information step first.",
         variant: "destructive",
+        className: "fixed top-4 right-4 z-50",
       });
       return;
     }
@@ -175,11 +180,28 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
 
       if (validTeachers.length === 0) {
         toast({
-          title: "Error",
+          title: "Validation error",
           description: "Please add at least one teacher with ID, first name, and last name.",
           variant: "destructive",
+          className: "fixed top-4 right-4 z-50",
         });
         return;
+      }
+
+      // Delete existing teachers for this school to avoid duplicates
+      const { error: deleteError } = await supabase
+        .from('teachers')
+        .delete()
+        .eq('school_id', schoolId);
+
+      if (deleteError) {
+        console.error('Error deleting existing teachers:', deleteError);
+        toast({
+          title: "Warning",
+          description: "Could not clear existing teacher data, but proceeding with save.",
+          variant: "destructive",
+          className: "fixed top-4 right-4 z-50",
+        });
       }
 
       const teachersWithSchoolId = validTeachers.map(teacher => ({
@@ -194,8 +216,9 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: `${validTeachers.length} teachers added successfully!`,
+        title: "Success!",
+        description: `${validTeachers.length} teachers saved successfully!`,
+        className: "fixed top-4 right-4 z-50",
       });
 
       onStepComplete({ teachers: validTeachers });
@@ -203,9 +226,10 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
     } catch (error) {
       console.error('Error saving teachers:', error);
       toast({
-        title: "Error",
+        title: "Save failed",
         description: "Failed to save teachers. Please try again.",
         variant: "destructive",
+        className: "fixed top-4 right-4 z-50",
       });
     } finally {
       setLoading(false);
@@ -213,107 +237,129 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Add Teachers</h2>
+        <div>
+          <h2 className="text-3xl font-bold text-gray-800">Add Teachers</h2>
+          <p className="text-gray-600 mt-2">Add your school's teaching staff information</p>
+        </div>
         <Button
           type="button"
           variant="outline"
           onClick={handleAutoFill}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 hover:from-purple-600 hover:to-pink-600"
         >
           <Wand2 className="h-4 w-4" />
           Auto Fill Sample Data
         </Button>
       </div>
 
-      <Tabs defaultValue="manual" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-          <TabsTrigger value="bulk">Bulk Upload</TabsTrigger>
+      <Tabs defaultValue="manual" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-lg">
+          <TabsTrigger value="manual" className="rounded-md">Manual Entry</TabsTrigger>
+          <TabsTrigger value="bulk" className="rounded-md">Bulk Upload</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="manual" className="space-y-4">
+        <TabsContent value="manual" className="space-y-6">
           {teachers.map((teacher, index) => (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm">Teacher {index + 1}</CardTitle>
+            <Card key={index} className="shadow-lg border-0 bg-white hover:shadow-xl transition-shadow duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                <CardTitle className="text-lg font-semibold text-gray-800">
+                  Teacher {index + 1}
+                </CardTitle>
                 {teachers.length > 1 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => removeTeacher(index)}
-                    className="text-red-500 hover:text-red-700"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
                 <div className="space-y-2">
-                  <Label>Teacher ID *</Label>
+                  <Label className="text-sm font-medium text-gray-700">Teacher ID *</Label>
                   <Input
                     value={teacher.teacher_id}
                     onChange={(e) => handleInputChange(index, 'teacher_id', e.target.value)}
                     placeholder="TCH001"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>First Name *</Label>
+                  <Label className="text-sm font-medium text-gray-700">First Name *</Label>
                   <Input
                     value={teacher.first_name}
                     onChange={(e) => handleInputChange(index, 'first_name', e.target.value)}
                     placeholder="John"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Last Name *</Label>
+                  <Label className="text-sm font-medium text-gray-700">Last Name *</Label>
                   <Input
                     value={teacher.last_name}
                     onChange={(e) => handleInputChange(index, 'last_name', e.target.value)}
                     placeholder="Doe"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label className="text-sm font-medium text-gray-700">Email</Label>
                   <Input
                     type="email"
                     value={teacher.email}
                     onChange={(e) => handleInputChange(index, 'email', e.target.value)}
                     placeholder="john.doe@school.edu"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Department</Label>
+                  <Label className="text-sm font-medium text-gray-700">Phone</Label>
+                  <Input
+                    value={teacher.phone}
+                    onChange={(e) => handleInputChange(index, 'phone', e.target.value)}
+                    placeholder="(555) 123-4567"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Department</Label>
                   <Input
                     value={teacher.department}
                     onChange={(e) => handleInputChange(index, 'department', e.target.value)}
                     placeholder="Mathematics"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Experience (Years)</Label>
+                  <Label className="text-sm font-medium text-gray-700">Experience (Years)</Label>
                   <Input
                     type="number"
                     value={teacher.experience_years}
                     onChange={(e) => handleInputChange(index, 'experience_years', parseInt(e.target.value) || 0)}
                     placeholder="5"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Subjects (comma-separated)</Label>
+                  <Label className="text-sm font-medium text-gray-700">Subjects (comma-separated)</Label>
                   <Input
                     value={teacher.subjects.join(', ')}
                     onChange={(e) => handleSubjectsChange(index, e.target.value)}
                     placeholder="Mathematics, Algebra, Calculus"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Qualification</Label>
+                <div className="space-y-2 md:col-span-3">
+                  <Label className="text-sm font-medium text-gray-700">Qualification</Label>
                   <Input
                     value={teacher.qualification}
                     onChange={(e) => handleInputChange(index, 'qualification', e.target.value)}
                     placeholder="M.Sc in Mathematics"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </CardContent>
@@ -324,37 +370,38 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
             type="button"
             variant="outline"
             onClick={addTeacher}
-            className="w-full flex items-center gap-2"
+            className="w-full flex items-center gap-2 border-dashed border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50 h-12"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-5 w-5" />
             Add Another Teacher
           </Button>
         </TabsContent>
 
-        <TabsContent value="bulk" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Bulk Upload Teachers</CardTitle>
+        <TabsContent value="bulk" className="space-y-6">
+          <Card className="shadow-lg border-0 bg-white">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 rounded-t-lg">
+              <CardTitle className="text-xl font-semibold text-gray-800">Bulk Upload Teachers</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6 p-6">
               <div>
-                <Label htmlFor="file-upload">Upload CSV File</Label>
+                <Label htmlFor="file-upload" className="text-sm font-medium text-gray-700">Upload CSV File</Label>
                 <Input
                   id="file-upload"
                   type="file"
                   accept=".csv"
                   onChange={handleFileUpload}
-                  className="mt-2"
+                  className="mt-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="text-sm text-gray-600">
-                <p>CSV format: teacher_id, first_name, last_name, email, phone, department, subjects, qualification, experience_years</p>
-                <p>Note: Separate multiple subjects with semicolons (;)</p>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-800 font-medium mb-2">CSV Format Instructions:</p>
+                <p className="text-sm text-blue-700">teacher_id, first_name, last_name, email, phone, department, subjects, qualification, experience_years</p>
+                <p className="text-sm text-blue-600 mt-1">Note: Separate multiple subjects with semicolons (;)</p>
               </div>
 
               <div>
-                <Label htmlFor="bulk-data">Or paste CSV data directly:</Label>
+                <Label htmlFor="bulk-data" className="text-sm font-medium text-gray-700">Or paste CSV data directly:</Label>
                 <Textarea
                   id="bulk-data"
                   value={bulkData}
@@ -363,11 +410,16 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
 TCH001,John,Doe,john@school.edu,Mathematics,Algebra;Calculus,M.Sc in Mathematics,5
 TCH002,Jane,Smith,jane@school.edu,Science,Physics;Chemistry,PhD in Physics,8"
                   rows={10}
-                  className="mt-2"
+                  className="mt-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
 
-              <Button onClick={processBulkData} disabled={!bulkData}>
+              <Button 
+                onClick={processBulkData} 
+                disabled={!bulkData}
+                className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white"
+              >
+                <Upload className="h-4 w-4 mr-2" />
                 Process CSV Data
               </Button>
             </CardContent>
@@ -375,12 +427,20 @@ TCH002,Jane,Smith,jane@school.edu,Science,Physics;Chemistry,PhD in Physics,8"
         </TabsContent>
       </Tabs>
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious}>
+      <div className="flex justify-between pt-6 border-t border-gray-200">
+        <Button 
+          variant="outline" 
+          onClick={onPrevious}
+          className="px-8 py-2 border-gray-300 hover:bg-gray-50"
+        >
           Previous
         </Button>
-        <Button onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Saving...' : 'Next Step'}
+        <Button 
+          onClick={handleSubmit} 
+          disabled={loading}
+          className="px-8 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
+        >
+          {loading ? 'Saving Teachers...' : 'Next Step'}
         </Button>
       </div>
     </div>
