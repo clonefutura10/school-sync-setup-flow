@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, ExternalLink, Download } from "lucide-react";
+import { CheckCircle, ExternalLink, Download, User, Users, BookOpen, Building, Clock, GraduationCap } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 import { DataExport } from '../DataExport';
 import { passDataToScheduler } from '@/utils/schedulerIntegration';
@@ -52,6 +52,147 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Setup Data Review */}
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-gray-50 to-slate-50">
+        <CardHeader>
+          <CardTitle className="text-center text-xl flex items-center justify-center gap-2">
+            <GraduationCap className="h-6 w-6 text-blue-600" />
+            Setup Data Review
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* School Information */}
+          <div className="bg-white rounded-lg p-4 border border-blue-200">
+            <h3 className="font-semibold text-blue-700 mb-3 flex items-center gap-2">
+              <GraduationCap className="h-5 w-5" />
+              School Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div><span className="font-medium">Name:</span> {schoolData.name || 'Not provided'}</div>
+              <div><span className="font-medium">Address:</span> {schoolData.address || 'Not provided'}</div>
+              <div><span className="font-medium">Phone:</span> {schoolData.phone || 'Not provided'}</div>
+              <div><span className="font-medium">Email:</span> {schoolData.email || 'Not provided'}</div>
+              <div><span className="font-medium">Principal:</span> {schoolData.principal_name || 'Not provided'}</div>
+              <div><span className="font-medium">Academic Year:</span> {schoolData.academic_year || 'Not provided'}</div>
+            </div>
+          </div>
+
+          {/* Students */}
+          <div className="bg-white rounded-lg p-4 border border-green-200">
+            <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Students ({schoolData.students?.length || 0})
+            </h3>
+            {schoolData.students && schoolData.students.length > 0 ? (
+              <div className="max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                  {schoolData.students.map((student: any, index: number) => (
+                    <div key={index} className="bg-green-50 p-2 rounded">
+                      <div className="font-medium">{student.name}</div>
+                      <div className="text-gray-600">Grade {student.grade} - Roll {student.roll_number}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No students added</p>
+            )}
+          </div>
+
+          {/* Teachers */}
+          <div className="bg-white rounded-lg p-4 border border-purple-200">
+            <h3 className="font-semibold text-purple-700 mb-3 flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Teachers ({schoolData.teachers?.length || 0})
+            </h3>
+            {schoolData.teachers && schoolData.teachers.length > 0 ? (
+              <div className="max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                  {schoolData.teachers.map((teacher: any, index: number) => (
+                    <div key={index} className="bg-purple-50 p-2 rounded">
+                      <div className="font-medium">{teacher.name}</div>
+                      <div className="text-gray-600">{teacher.email}</div>
+                      <div className="text-gray-500">{teacher.subject}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No teachers added</p>
+            )}
+          </div>
+
+          {/* Subjects */}
+          <div className="bg-white rounded-lg p-4 border border-orange-200">
+            <h3 className="font-semibold text-orange-700 mb-3 flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Subjects ({schoolData.subjects?.length || 0})
+            </h3>
+            {schoolData.subjects && schoolData.subjects.length > 0 ? (
+              <div className="max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                  {schoolData.subjects.map((subject: any, index: number) => (
+                    <div key={index} className="bg-orange-50 p-2 rounded">
+                      <div className="font-medium">{subject.name}</div>
+                      <div className="text-gray-600">{subject.code}</div>
+                      <div className="text-gray-500">{subject.credits} credits</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No subjects added</p>
+            )}
+          </div>
+
+          {/* Classes */}
+          <div className="bg-white rounded-lg p-4 border border-red-200">
+            <h3 className="font-semibold text-red-700 mb-3 flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Classes ({schoolData.classes?.length || 0})
+            </h3>
+            {schoolData.classes && schoolData.classes.length > 0 ? (
+              <div className="max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                  {schoolData.classes.map((cls: any, index: number) => (
+                    <div key={index} className="bg-red-50 p-2 rounded">
+                      <div className="font-medium">{cls.name}</div>
+                      <div className="text-gray-600">Grade {cls.grade} - {cls.section}</div>
+                      <div className="text-gray-500">Room {cls.room_number} (Cap: {cls.capacity})</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No classes added</p>
+            )}
+          </div>
+
+          {/* Time Slots */}
+          <div className="bg-white rounded-lg p-4 border border-indigo-200">
+            <h3 className="font-semibold text-indigo-700 mb-3 flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Time Slots ({schoolData.timeSlots?.length || 0})
+            </h3>
+            {schoolData.timeSlots && schoolData.timeSlots.length > 0 ? (
+              <div className="max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                  {schoolData.timeSlots.map((slot: any, index: number) => (
+                    <div key={index} className="bg-indigo-50 p-2 rounded">
+                      <div className="font-medium">{slot.period_name}</div>
+                      <div className="text-gray-600">{slot.start_time} - {slot.end_time}</div>
+                      <div className="text-gray-500">{slot.day_of_week}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No time slots added</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
