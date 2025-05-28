@@ -1,21 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Plus, Trash2, CalendarDays, Wand2 } from "lucide-react";
+import { Calendar, Plus, Trash2, CalendarDays, Clock, GraduationCap } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-interface CalendarEvent {
+interface AcademicEvent {
   id?: string;
   event_name: string;
   event_type: 'holiday' | 'exam' | 'event' | 'break';
@@ -24,503 +20,355 @@ interface CalendarEvent {
   description: string;
 }
 
-const EVENT_TYPES = [
-  { value: 'holiday', label: 'Holiday', color: 'bg-red-100 text-red-800 border-red-200' },
-  { value: 'exam', label: 'Exam', color: 'bg-orange-100 text-orange-800 border-orange-200' },
-  { value: 'event', label: 'Event', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  { value: 'break', label: 'Break', color: 'bg-green-100 text-green-800 border-green-200' }
-];
-
-const SAMPLE_EVENTS: CalendarEvent[] = [
-  {
-    event_name: "Summer Vacation",
-    event_type: "break",
-    start_date: "2024-05-15",
-    end_date: "2024-06-30",
-    description: "Annual summer break"
-  },
-  {
-    event_name: "Independence Day",
-    event_type: "holiday",
-    start_date: "2024-08-15",
-    end_date: "2024-08-15",
-    description: "National holiday"
-  },
-  {
-    event_name: "Annual Sports Day",
-    event_type: "event",
-    start_date: "2024-11-15",
-    end_date: "2024-11-16",
-    description: "School sports competition"
-  },
-  {
-    event_name: "Mid-term Examinations",
-    event_type: "exam",
-    start_date: "2024-09-15",
-    end_date: "2024-09-25",
-    description: "First semester mid-term exams"
-  }
-];
-
 export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   onNext,
   onPrevious,
   onStepComplete,
-  schoolId
+  schoolId,
+  schoolData
 }) => {
-  const [academicYear, setAcademicYear] = useState({ start: '', end: '' });
-  const [events, setEvents] = useState<CalendarEvent[]>([{
+  const { toast } = useToast();
+  
+  // Initialize with existing data or defaults
+  const [academicYear, setAcademicYear] = useState({
+    start_date: schoolData.academic_year_start || '',
+    end_date: schoolData.academic_year_end || '',
+  });
+
+  const [termBreaks, setTermBreaks] = useState([
+    { name: 'Term 1', start_date: '', end_date: '' },
+    { name: 'Term 2', start_date: '', end_date: '' },
+    { name: 'Term 3', start_date: '', end_date: '' },
+  ]);
+
+  const [weeklyOffs, setWeeklyOffs] = useState<string[]>(
+    schoolData.weekly_offs || ['Sunday']
+  );
+
+  const [events, setEvents] = useState<AcademicEvent[]>(
+    schoolData.academicCalendar || []
+  );
+
+  const [newEvent, setNewEvent] = useState<AcademicEvent>({
     event_name: '',
     event_type: 'holiday',
     start_date: '',
     end_date: '',
-    description: ''
-  }]);
-  const [weeklyOffs, setWeeklyOffs] = useState<string[]>(['Sunday']);
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+    description: '',
+  });
 
-  const weekDays = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-  ];
-
-  const handleEventChange = (index: number, field: keyof CalendarEvent, value: string) => {
-    const updatedEvents = [...events];
-    updatedEvents[index] = { ...updatedEvents[index], [field]: value };
-    setEvents(updatedEvents);
+  const eventTypeColors = {
+    holiday: 'bg-red-100 text-red-800',
+    exam: 'bg-blue-100 text-blue-800',
+    event: 'bg-green-100 text-green-800',
+    break: 'bg-yellow-100 text-yellow-800',
   };
+
+  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   const addEvent = () => {
-    setEvents([...events, {
-      event_name: '',
-      event_type: 'holiday',
-      start_date: '',
-      end_date: '',
-      description: ''
-    }]);
-  };
-
-  const removeEvent = (index: number) => {
-    if (events.length > 1) {
-      setEvents(events.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleWeeklyOffChange = (day: string, checked: boolean) => {
-    if (checked) {
-      setWeeklyOffs([...weeklyOffs, day]);
-    } else {
-      setWeeklyOffs(weeklyOffs.filter(d => d !== day));
-    }
-  };
-
-  const handleAutoFill = () => {
-    setEvents(SAMPLE_EVENTS);
-    setAcademicYear({ start: '2024-04-01', end: '2025-03-31' });
-    setWeeklyOffs(['Sunday']);
-    toast({
-      title: "✨ Auto-filled successfully!",
-      description: "Sample academic calendar data has been loaded.",
-      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-    });
-  };
-
-  const handleSubmit = async () => {
-    if (!schoolId) {
+    if (!newEvent.event_name || !newEvent.start_date || !newEvent.end_date) {
       toast({
-        title: "❌ Missing Information",
-        description: "School ID is required.",
+        title: "Error",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
 
-    setLoading(true);
-    try {
-      const validEvents = events.filter(event => 
-        event.event_name.trim() && event.start_date && event.end_date
-      );
+    setEvents([...events, { ...newEvent, id: Date.now().toString() }]);
+    setNewEvent({
+      event_name: '',
+      event_type: 'holiday',
+      start_date: '',
+      end_date: '',
+      description: '',
+    });
+  };
 
-      // Delete existing calendar events for this school
-      const { error: deleteError } = await supabase
-        .from('academic_calendar')
-        .delete()
-        .eq('school_id', schoolId);
+  const removeEvent = (index: number) => {
+    setEvents(events.filter((_, i) => i !== index));
+  };
 
-      if (deleteError) {
-        console.error('Error deleting existing events:', deleteError);
-      }
+  const toggleWeeklyOff = (day: string) => {
+    setWeeklyOffs(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day]
+    );
+  };
 
-      if (validEvents.length > 0) {
-        const eventsWithSchoolId = validEvents.map(event => ({
-          ...event,
-          school_id: schoolId
-        }));
-
-        const { error: insertError } = await supabase
-          .from('academic_calendar')
-          .insert(eventsWithSchoolId);
-
-        if (insertError) {
-          throw new Error(`Failed to save events: ${insertError.message}`);
-        }
-      }
-
+  const saveAcademicCalendar = async () => {
+    if (!schoolId) {
       toast({
-        title: "✅ Success!",
-        description: `Academic calendar configured with ${validEvents.length} events.`,
-        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+        title: "Error",
+        description: "School ID is required",
+        variant: "destructive",
       });
+      return;
+    }
 
-      onStepComplete({ 
-        academicCalendar: validEvents,
-        academicYear,
-        weeklyOffs
+    try {
+      // Prepare all events including term breaks
+      const allEvents = [
+        ...events,
+        ...termBreaks
+          .filter(term => term.start_date && term.end_date)
+          .map(term => ({
+            event_name: `${term.name} Break`,
+            event_type: 'break' as const,
+            start_date: term.start_date,
+            end_date: term.end_date,
+            description: `Academic ${term.name} break period`,
+            school_id: schoolId,
+          }))
+      ];
+
+      if (allEvents.length > 0) {
+        // Use type assertion since types haven't been updated yet
+        const { error } = await (supabase as any)
+          .from('academic_calendar')
+          .upsert(allEvents.map(event => ({
+            ...event,
+            school_id: schoolId,
+          })));
+
+        if (error) throw error;
+      }
+
+      const calendarData = {
+        academicCalendar: events,
+        academic_year_start: academicYear.start_date,
+        academic_year_end: academicYear.end_date,
+        term_breaks: termBreaks,
+        weekly_offs: weeklyOffs,
+      };
+
+      onStepComplete(calendarData);
+      toast({
+        title: "Success",
+        description: "Academic calendar configured successfully!",
       });
       onNext();
+
     } catch (error) {
       console.error('Error saving academic calendar:', error);
       toast({
-        title: "❌ Save Failed",
-        description: error instanceof Error ? error.message : "Failed to save calendar.",
+        title: "Error",
+        description: "Failed to save academic calendar",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const getEventTypeConfig = (type: string) => {
-    return EVENT_TYPES.find(t => t.value === type) || EVENT_TYPES[0];
   };
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Academic Calendar</h2>
-          <p className="text-gray-600">Configure the academic year calendar, term dates, holidays and important events</p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleAutoFill}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 hover:from-purple-100 hover:to-indigo-100 transition-all duration-300"
-        >
-          <Wand2 className="h-5 w-5 text-purple-600" />
-          <span className="font-medium text-purple-700">Auto Fill</span>
-        </Button>
+      <div className="text-center space-y-2">
+        <CalendarDays className="h-12 w-12 text-blue-600 mx-auto" />
+        <h2 className="text-2xl font-bold text-gray-800">Academic Calendar Setup</h2>
+        <p className="text-gray-600">Configure your school's academic year, terms, and important events</p>
       </div>
 
-      {/* Academic Year Settings */}
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-blue-50">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-            <CalendarDays className="h-5 w-5 text-blue-600" />
-            Academic Year Configuration
+      {/* Academic Year */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-blue-600" />
+            Academic Year Period
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Academic Year Start Date</Label>
-              <div className="flex flex-col space-y-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !academicYear.start && "text-muted-foreground"
-                      )}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {academicYear.start ? format(new Date(academicYear.start), "PPP") : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={academicYear.start ? new Date(academicYear.start) : undefined}
-                      onSelect={(date) => date && setAcademicYear({...academicYear, start: format(date, 'yyyy-MM-dd')})}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Academic Year End Date</Label>
-              <div className="flex flex-col space-y-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !academicYear.end && "text-muted-foreground"
-                      )}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {academicYear.end ? format(new Date(academicYear.end), "PPP") : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={academicYear.end ? new Date(academicYear.end) : undefined}
-                      onSelect={(date) => date && setAcademicYear({...academicYear, end: format(date, 'yyyy-MM-dd')})}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="start_date">Academic Year Start</Label>
+            <Input
+              id="start_date"
+              type="date"
+              value={academicYear.start_date}
+              onChange={(e) => setAcademicYear(prev => ({ ...prev, start_date: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="end_date">Academic Year End</Label>
+            <Input
+              id="end_date"
+              type="date"
+              value={academicYear.end_date}
+              onChange={(e) => setAcademicYear(prev => ({ ...prev, end_date: e.target.value }))}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Weekly Off Days */}
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-blue-50">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-            <CalendarDays className="h-5 w-5 text-blue-600" />
-            Weekly Off Days
+      {/* Term Breaks */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-purple-600" />
+            Term Break Configuration
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {weekDays.map((day) => (
-              <div key={day} className="flex items-center space-x-2">
-                <Checkbox 
-                  id={`day-${day}`} 
-                  checked={weeklyOffs.includes(day)}
-                  onCheckedChange={(checked) => handleWeeklyOffChange(day, checked === true)}
-                />
-                <Label 
-                  htmlFor={`day-${day}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {day}
-                </Label>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {termBreaks.map((term, index) => (
+              <div key={index} className="space-y-3 p-4 border rounded-lg">
+                <h4 className="font-semibold text-gray-700">{term.name}</h4>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Start Date"
+                    type="date"
+                    value={term.start_date}
+                    onChange={(e) => {
+                      const updated = [...termBreaks];
+                      updated[index].start_date = e.target.value;
+                      setTermBreaks(updated);
+                    }}
+                  />
+                  <Input
+                    placeholder="End Date"
+                    type="date"
+                    value={term.end_date}
+                    onChange={(e) => {
+                      const updated = [...termBreaks];
+                      updated[index].end_date = e.target.value;
+                      setTermBreaks(updated);
+                    }}
+                  />
+                </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Events Management */}
-      <div className="space-y-6">
-        <h3 className="text-xl font-semibold text-gray-800">Events & Holidays</h3>
-        
-        {events.map((event, index) => (
-          <Card key={index} className="shadow-lg border-0 bg-white hover:shadow-xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
-              <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                Event {index + 1}
-              </CardTitle>
-              {events.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeEvent(index)}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4 p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Event Name *</Label>
-                  <Input
-                    value={event.event_name}
-                    onChange={(e) => handleEventChange(index, 'event_name', e.target.value)}
-                    placeholder="e.g., Independence Day"
-                    className="border-gray-300 focus:border-blue-500"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Event Type *</Label>
-                  <select
-                    value={event.event_type}
-                    onChange={(e) => handleEventChange(index, 'event_type', e.target.value as any)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-200 focus:border-blue-500"
-                  >
-                    {EVENT_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+      {/* Weekly Offs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Off Days</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {weekDays.map(day => (
+              <Button
+                key={day}
+                variant={weeklyOffs.includes(day) ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleWeeklyOff(day)}
+              >
+                {day}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Start Date *</Label>
-                  <div className="flex flex-col space-y-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !event.start_date && "text-muted-foreground"
-                          )}
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {event.start_date ? format(new Date(event.start_date), "PPP") : "Select date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={event.start_date ? new Date(event.start_date) : undefined}
-                          onSelect={(date) => date && handleEventChange(index, 'start_date', format(date, 'yyyy-MM-dd'))}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
+      {/* Add New Event */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-green-600" />
+            Add Academic Events
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <Label>Event Name</Label>
+              <Input
+                value={newEvent.event_name}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, event_name: e.target.value }))}
+                placeholder="e.g., Sports Day"
+              />
+            </div>
+            <div>
+              <Label>Event Type</Label>
+              <select
+                className="w-full p-2 border rounded-md"
+                value={newEvent.event_type}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, event_type: e.target.value as any }))}
+              >
+                <option value="holiday">Holiday</option>
+                <option value="exam">Exam</option>
+                <option value="event">Event</option>
+                <option value="break">Break</option>
+              </select>
+            </div>
+            <div>
+              <Label>Start Date</Label>
+              <Input
+                type="date"
+                value={newEvent.start_date}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, start_date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>End Date</Label>
+              <Input
+                type="date"
+                value={newEvent.end_date}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, end_date: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Textarea
+              value={newEvent.description}
+              onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Optional event description"
+            />
+          </div>
+          <Button onClick={addEvent} className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Event
+          </Button>
+        </CardContent>
+      </Card>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">End Date *</Label>
-                  <div className="flex flex-col space-y-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !event.end_date && "text-muted-foreground"
-                          )}
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {event.end_date ? format(new Date(event.end_date), "PPP") : "Select date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={event.end_date ? new Date(event.end_date) : undefined}
-                          onSelect={(date) => date && handleEventChange(index, 'end_date', format(date, 'yyyy-MM-dd'))}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Description</Label>
-                <Textarea
-                  value={event.description}
-                  onChange={(e) => handleEventChange(index, 'description', e.target.value)}
-                  placeholder="Provide details about this event"
-                  className="border-gray-300 focus:border-blue-500"
-                  rows={2}
-                />
-              </div>
-
-              {/* Event badge */}
-              <div className="flex items-center mt-2">
-                <div className={`px-3 py-1 rounded-full text-sm ${getEventTypeConfig(event.event_type).color} border`}>
-                  {getEventTypeConfig(event.event_type).label}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        <Button
-          type="button"
-          variant="outline"
-          onClick={addEvent}
-          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50"
-        >
-          <Plus className="h-5 w-5 text-blue-600" />
-          <span className="font-medium text-blue-600">Add Another Event</span>
-        </Button>
-      </div>
-
-      {/* Calendar summary */}
-      {events.length > 0 && events.some(e => e.event_name && e.start_date && e.end_date) && (
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-blue-50">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-              <CalendarDays className="h-5 w-5 text-blue-600" />
-              Calendar Summary
-            </CardTitle>
+      {/* Events List */}
+      {events.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Configured Events</CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                {EVENT_TYPES.map(type => {
-                  const count = events.filter(e => e.event_type === type.value && e.event_name).length;
-                  return (
-                    <div key={type.value} className="flex items-center justify-between p-3 rounded-lg border bg-white">
-                      <span className="text-sm font-medium">{type.label}s:</span>
-                      <span className={`font-bold px-2 py-0.5 rounded-full ${type.color}`}>{count}</span>
+          <CardContent>
+            <div className="space-y-3">
+              {events.map((event, index) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Badge className={eventTypeColors[event.event_type]}>
+                      {event.event_type}
+                    </Badge>
+                    <div>
+                      <h4 className="font-semibold">{event.event_name}</h4>
+                      <p className="text-sm text-gray-600">
+                        {event.start_date} to {event.end_date}
+                      </p>
+                      {event.description && (
+                        <p className="text-xs text-gray-500">{event.description}</p>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-              
-              <div className="border rounded-lg p-4 bg-white">
-                <h4 className="font-semibold text-sm mb-3">Events Timeline</h4>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {events
-                    .filter(event => event.event_name && event.start_date)
-                    .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
-                    .map((event, idx) => (
-                      <div key={idx} className="flex items-center px-3 py-2 rounded-md hover:bg-gray-50">
-                        <div className={`w-3 h-3 rounded-full mr-2 ${getEventTypeConfig(event.event_type).color.replace('text-', 'bg-').split(' ')[0]}`}></div>
-                        <div className="flex-grow">
-                          <span className="font-medium text-sm">{event.event_name}</span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            ({event.start_date === event.end_date ? 
-                              format(new Date(event.start_date), "MMM dd, yyyy") : 
-                              `${format(new Date(event.start_date), "MMM dd")} - ${format(new Date(event.end_date), "MMM dd, yyyy")}`})
-                          </span>
-                        </div>
-                        <span className={`text-xs ${getEventTypeConfig(event.event_type).color} px-2 py-0.5 rounded-full`}>
-                          {getEventTypeConfig(event.event_type).label}
-                        </span>
-                      </div>
-                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeEvent(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="flex justify-between pt-6 border-t">
-        <Button 
-          variant="outline" 
-          onClick={onPrevious}
-          className="px-8 py-3 border-gray-300 hover:bg-gray-50"
-        >
+      {/* Navigation */}
+      <div className="flex justify-between pt-6">
+        <Button variant="outline" onClick={onPrevious}>
           ← Previous
         </Button>
-        <Button 
-          onClick={handleSubmit} 
-          disabled={loading}
-          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium disabled:opacity-50"
-        >
-          {loading ? (
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              Saving...
-            </div>
-          ) : (
-            'Next Step →'
-          )}
+        <Button onClick={saveAcademicCalendar}>
+          Next: Infrastructure Setup →
         </Button>
       </div>
     </div>

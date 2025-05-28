@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +10,10 @@ import { TeachersStep } from './setup-steps/TeachersStep';
 import { SubjectsStep } from './setup-steps/SubjectsStep';
 import { ClassesStep } from './setup-steps/ClassesStep';
 import { TimeSlotsStep } from './setup-steps/TimeSlotsStep';
-import { SetupComplete } from './setup-steps/SetupComplete';
 import { AcademicCalendarStep } from './setup-steps/AcademicCalendarStep';
 import { InfrastructureStep } from './setup-steps/InfrastructureStep';
 import { TeacherSubjectMappingStep } from './setup-steps/TeacherSubjectMappingStep';
+import { EnhancedSetupComplete } from './EnhancedSetupComplete';
 import { BaseStepProps } from '@/types/setup';
 import { 
   GraduationCap, 
@@ -39,7 +38,7 @@ const STEPS = [
   { id: 7, title: 'Classes', component: ClassesStep, needsSchoolCreated: false, icon: Building, color: 'text-red-600' },
   { id: 8, title: 'Teacher-Subject Mapping', component: TeacherSubjectMappingStep, needsSchoolCreated: false, icon: BookCopy, color: 'text-pink-600' },
   { id: 9, title: 'Time Slots', component: TimeSlotsStep, needsSchoolCreated: false, icon: Clock, color: 'text-amber-600' },
-  { id: 10, title: 'Complete', component: SetupComplete, needsSchoolCreated: false, icon: CheckCircle, color: 'text-emerald-600' },
+  { id: 10, title: 'Complete', component: EnhancedSetupComplete, needsSchoolCreated: false, icon: CheckCircle, color: 'text-emerald-600' },
 ];
 
 export const SchoolSetupWizard = () => {
@@ -204,7 +203,7 @@ export const SchoolSetupWizard = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">School Setup Wizard</h1>
-          <p className="text-lg text-gray-600">Configure your school's complete information system</p>
+          <p className="text-lg text-gray-600">Complete 10-step setup for comprehensive school management</p>
         </div>
 
         {/* Step Indicator */}
@@ -240,7 +239,7 @@ export const SchoolSetupWizard = () => {
 
         {/* Footer Info */}
         <div className="text-center mt-6 text-sm text-gray-500">
-          <p>All data is securely stored and will be available in your scheduling system</p>
+          <p>✨ Enhanced with AI-powered analytics and comprehensive data validation</p>
         </div>
       </div>
     </div>

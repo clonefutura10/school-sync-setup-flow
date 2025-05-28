@@ -9,6 +9,50 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      academic_calendar: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string
+          event_name: string
+          event_type: string
+          id: string
+          school_id: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date: string
+          event_name: string
+          event_type: string
+          id?: string
+          school_id?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          event_name?: string
+          event_type?: string
+          id?: string
+          school_id?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_calendar_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       availability: {
         Row: {
           created_at: string
@@ -103,6 +147,53 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      infrastructure: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          equipment: Json | null
+          grade_assignment: string | null
+          id: string
+          is_available: boolean | null
+          room_name: string
+          room_type: string
+          school_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          equipment?: Json | null
+          grade_assignment?: string | null
+          id?: string
+          is_available?: boolean | null
+          room_name: string
+          room_type: string
+          school_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          equipment?: Json | null
+          grade_assignment?: string | null
+          id?: string
+          is_available?: boolean | null
+          room_name?: string
+          room_type?: string
+          school_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "infrastructure_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -280,6 +371,71 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_subject_mappings: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          id: string
+          periods_per_week: number | null
+          preferred_time_slots: string[] | null
+          school_id: string | null
+          subject_id: string | null
+          teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          periods_per_week?: number | null
+          preferred_time_slots?: string[] | null
+          school_id?: string | null
+          subject_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          periods_per_week?: number | null
+          preferred_time_slots?: string[] | null
+          school_id?: string | null
+          subject_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_subject_mappings_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_subject_mappings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_subject_mappings_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_subject_mappings_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
         ]
