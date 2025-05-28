@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BaseStepProps } from '@/types/setup';
-import { GraduationCap, MapPin, Mail, Phone, User, Calendar, Eye } from "lucide-react";
+import { GraduationCap, MapPin, Mail, Phone, User, Calendar, Eye, Wand2 } from "lucide-react";
+
+const SAMPLE_SCHOOL_DATA = {
+  name: 'Springfield Elementary School',
+  address: '742 Evergreen Terrace, Springfield, IL 62701',
+  phone: '+1-555-0100',
+  email: 'info@springfield-elementary.edu',
+  principal_name: 'Dr. Sarah Johnson',
+  academic_year: '2024-2025',
+  number_of_terms: 3,
+  working_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as string[],
+  school_vision: 'To provide excellence in education and foster lifelong learning in a nurturing environment that prepares students for success in the 21st century.',
+  school_type: 'Public',
+  academic_year_start: '2024-08-15',
+  academic_year_end: '2025-06-15',
+  timezone: 'America/Chicago'
+};
 
 export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   onNext,
@@ -44,6 +59,15 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         ? prev.working_days.filter(d => d !== day)
         : [...prev.working_days, day]
     }));
+  };
+
+  const handleAutoFill = () => {
+    setSchoolData(SAMPLE_SCHOOL_DATA);
+    toast({
+      title: "✨ Auto-filled successfully!",
+      description: "Sample school data has been loaded into the form.",
+      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+    });
   };
 
   const handleSubmit = async () => {
@@ -126,10 +150,23 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
   return (
     <div className="space-y-8">
-      <div className="text-center space-y-2">
-        <GraduationCap className="h-12 w-12 text-blue-600 mx-auto" />
-        <h2 className="text-3xl font-bold text-gray-800">School Information</h2>
-        <p className="text-gray-600">Enter your school's basic details to get started</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <div className="text-center space-y-2">
+            <GraduationCap className="h-12 w-12 text-blue-600 mx-auto" />
+            <h2 className="text-3xl font-bold text-gray-800">School Information</h2>
+            <p className="text-gray-600">Enter your school's basic details to get started</p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleAutoFill}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:from-blue-100 hover:to-purple-100"
+        >
+          <Wand2 className="h-5 w-5 text-blue-600" />
+          <span className="font-medium text-blue-700">Auto Fill Sample Data</span>
+        </Button>
       </div>
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
