@@ -7,24 +7,51 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Wand2, Plus, Trash2, Users, User } from "lucide-react";
+import { Wand2, Plus, Trash2, Building, Users, UserCheck } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
-
-const SAMPLE_CLASSES = [
-  { name: "Grade 9 Section A", grade: "9", section: "A", room_number: "101", capacity: 30, actual_enrollment: 28 },
-  { name: "Grade 9 Section B", grade: "9", section: "B", room_number: "102", capacity: 30, actual_enrollment: 30 },
-  { name: "Grade 10 Section A", grade: "10", section: "A", room_number: "201", capacity: 28, actual_enrollment: 25 },
-  { name: "Grade 10 Section B", grade: "10", section: "B", room_number: "202", capacity: 28, actual_enrollment: 27 },
-  { name: "Grade 11 Science", grade: "11", section: "Science", room_number: "301", capacity: 25, actual_enrollment: 22 },
-  { name: "Grade 12 Science", grade: "12", section: "Science", room_number: "302", capacity: 25, actual_enrollment: 24 }
-];
 
 interface Teacher {
   id: string;
   first_name: string;
   last_name: string;
-  is_class_teacher: boolean;
+  email?: string;
+  department?: string;
 }
+
+const SAMPLE_CLASSES = [
+  { 
+    name: "Grade 1-A", 
+    grade: "1", 
+    section: "A", 
+    capacity: 25, 
+    room_number: "101",
+    actual_enrollment: 22
+  },
+  { 
+    name: "Grade 1-B", 
+    grade: "1", 
+    section: "B", 
+    capacity: 25, 
+    room_number: "102",
+    actual_enrollment: 24
+  },
+  { 
+    name: "Grade 2-A", 
+    grade: "2", 
+    section: "A", 
+    capacity: 30, 
+    room_number: "201",
+    actual_enrollment: 28
+  },
+  { 
+    name: "Grade 3-A", 
+    grade: "3", 
+    section: "A", 
+    capacity: 30, 
+    room_number: "301",
+    actual_enrollment: 29
+  }
+];
 
 export const ClassesStep: React.FC<BaseStepProps> = ({
   onNext,
@@ -36,8 +63,8 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
     name: '',
     grade: '',
     section: '',
-    room_number: '',
     capacity: 30,
+    room_number: '',
     actual_enrollment: 0,
     class_teacher_id: ''
   }]);
@@ -45,26 +72,29 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Fetch teachers when component mounts
   useEffect(() => {
-    const fetchTeachers = async () => {
-      if (!schoolId) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('teachers')
-          .select('id, first_name, last_name, is_class_teacher')
-          .eq('school_id', schoolId);
-
-        if (error) throw error;
-        setTeachers(data || []);
-      } catch (error) {
-        console.error('Error fetching teachers:', error);
-      }
-    };
-
-    fetchTeachers();
+    if (schoolId) {
+      fetchTeachers();
+    }
   }, [schoolId]);
+
+  const fetchTeachers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('id, first_name, last_name, email, department')
+        .eq('school_id', schoolId);
+
+      if (error) {
+        console.error('Error fetching teachers:', error);
+        return;
+      }
+
+      setTeachers(data || []);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+    }
+  };
 
   const handleInputChange = (index: number, field: string, value: string | number) => {
     const updatedClasses = [...classes];
@@ -77,8 +107,8 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
       name: '',
       grade: '',
       section: '',
-      room_number: '',
       capacity: 30,
+      room_number: '',
       actual_enrollment: 0,
       class_teacher_id: ''
     }]);
@@ -91,7 +121,10 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
   };
 
   const handleAutoFill = () => {
-    setClasses(SAMPLE_CLASSES.map(cls => ({ ...cls, class_teacher_id: '' })));
+    setClasses(SAMPLE_CLASSES.map(cls => ({
+      ...cls,
+      class_teacher_id: ''
+    })));
     toast({
       title: "✨ Auto-filled successfully!",
       description: "Sample class data has been loaded into the form.",
@@ -105,6 +138,7 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
         title: "❌ Missing Information",
         description: "School ID is required. Please complete the school information step first.",
         variant: "destructive",
+        className: "fixed top-4 right-4 w-96",
       });
       return;
     }
@@ -112,7 +146,7 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
     setLoading(true);
     try {
       const validClasses = classes.filter(cls => 
-        cls.name && cls.grade
+        cls.name.trim() && cls.grade.trim()
       );
 
       if (validClasses.length === 0) {
@@ -120,12 +154,13 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
           title: "❌ Validation Error",
           description: "Please add at least one class with name and grade.",
           variant: "destructive",
+          className: "fixed top-4 right-4 w-96",
         });
         setLoading(false);
         return;
       }
 
-      // First, delete existing classes for this school to prevent duplicates
+      // Delete existing classes for this school
       const { error: deleteError } = await supabase
         .from('classes')
         .delete()
@@ -141,11 +176,14 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
         class_teacher_id: cls.class_teacher_id || null
       }));
 
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('classes')
         .insert(classesWithSchoolId);
 
-      if (error) throw error;
+      if (insertError) {
+        console.error('Detailed insert error:', insertError);
+        throw new Error(`Failed to save classes: ${insertError.message}`);
+      }
 
       toast({
         title: "✅ Success!",
@@ -159,25 +197,13 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
       console.error('Error saving classes:', error);
       toast({
         title: "❌ Save Failed",
-        description: "Failed to save classes. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to save classes. Please try again.",
         variant: "destructive",
+        className: "fixed top-4 right-4 w-96",
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  const getAvailableTeachers = (currentIndex: number) => {
-    const assignedTeacherIds = classes
-      .map((cls, idx) => idx !== currentIndex ? cls.class_teacher_id : null)
-      .filter(id => id);
-    
-    return teachers.filter(teacher => !assignedTeacherIds.includes(teacher.id));
-  };
-
-  const getTeacherName = (teacherId: string) => {
-    const teacher = teachers.find(t => t.id === teacherId);
-    return teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Unknown Teacher';
   };
 
   return (
@@ -185,13 +211,13 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Add Classes</h2>
-          <p className="text-gray-600">Configure classes with capacity and teacher assignments</p>
+          <p className="text-gray-600">Configure classes with teacher assignments and enrollment tracking</p>
         </div>
         <Button
           type="button"
           variant="outline"
           onClick={handleAutoFill}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200 transition-all duration-300"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 hover:from-purple-100 hover:to-indigo-100 transition-all duration-300"
         >
           <Wand2 className="h-5 w-5 text-purple-600" />
           <span className="font-medium text-purple-700">Auto Fill Sample Data</span>
@@ -201,9 +227,9 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
       <div className="space-y-6">
         {classes.map((cls, index) => (
           <Card key={index} className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-red-50 to-pink-50 rounded-t-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
               <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <Users className="h-5 w-5 text-red-600" />
+                <Building className="h-5 w-5 text-blue-600" />
                 Class {index + 1}
               </CardTitle>
               {classes.length > 1 && (
@@ -225,8 +251,8 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
                   <Input
                     value={cls.name}
                     onChange={(e) => handleInputChange(index, 'name', e.target.value)}
-                    placeholder="Grade 9 Section A"
-                    className="border-gray-300 focus:border-red-500 focus:ring-red-500 transition-colors"
+                    placeholder="e.g., Grade 1-A"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                   />
                 </div>
                 <div className="space-y-2">
@@ -234,8 +260,8 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
                   <Input
                     value={cls.grade}
                     onChange={(e) => handleInputChange(index, 'grade', e.target.value)}
-                    placeholder="9"
-                    className="border-gray-300 focus:border-red-500 focus:ring-red-500 transition-colors"
+                    placeholder="e.g., 1"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
                   />
                 </div>
                 <div className="space-y-2">
@@ -243,25 +269,19 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
                   <Input
                     value={cls.section}
                     onChange={(e) => handleInputChange(index, 'section', e.target.value)}
-                    placeholder="A"
-                    className="border-gray-300 focus:border-red-500 focus:ring-red-500 transition-colors"
+                    placeholder="e.g., A"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500 transition-colors"
                   />
                 </div>
               </div>
 
-              {/* Room and Capacity */}
+              {/* Capacity and Enrollment */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Room Number</Label>
-                  <Input
-                    value={cls.room_number}
-                    onChange={(e) => handleInputChange(index, 'room_number', e.target.value)}
-                    placeholder="101"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Maximum Capacity</Label>
+                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    Capacity
+                  </Label>
                   <Input
                     type="number"
                     value={cls.capacity}
@@ -269,8 +289,19 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
                     placeholder="30"
                     min="1"
                     max="100"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500 transition-colors"
                   />
+                  <p className="text-xs text-gray-500">Maximum students</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Room Number</Label>
+                  <Input
+                    value={cls.room_number}
+                    onChange={(e) => handleInputChange(index, 'room_number', e.target.value)}
+                    placeholder="e.g., 101"
+                    className="border-gray-300 focus:border-orange-500 focus:ring-orange-500 transition-colors"
+                  />
+                  <p className="text-xs text-gray-500">Assigned classroom</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-700">Actual Enrollment</Label>
@@ -283,59 +314,65 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
                     max={cls.capacity}
                     className="border-gray-300 focus:border-green-500 focus:ring-green-500 transition-colors"
                   />
-                  <p className="text-xs text-gray-500">Current student count</p>
+                  <p className="text-xs text-gray-500">Currently enrolled students</p>
                 </div>
               </div>
 
               {/* Class Teacher Assignment */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                  <User className="h-4 w-4" />
-                  Class Teacher Assignment
+                  <UserCheck className="h-4 w-4" />
+                  Class Teacher
                 </Label>
-                <Select 
-                  value={cls.class_teacher_id} 
+                <Select
+                  value={cls.class_teacher_id}
                   onValueChange={(value) => handleInputChange(index, 'class_teacher_id', value)}
                 >
-                  <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
-                    <SelectValue placeholder="Select a class teacher (optional)" />
+                  <SelectTrigger className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
+                    <SelectValue placeholder="Select a class teacher" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No class teacher assigned</SelectItem>
-                    {getAvailableTeachers(index).map((teacher) => (
+                    <SelectItem value="">No teacher assigned</SelectItem>
+                    {teachers.map((teacher) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
                         {teacher.first_name} {teacher.last_name}
-                        {teacher.is_class_teacher && " (Experienced Class Teacher)"}
+                        {teacher.department && (
+                          <span className="text-gray-500 ml-2">({teacher.department})</span>
+                        )}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {cls.class_teacher_id && (
-                  <p className="text-xs text-green-600">
-                    Assigned to: {getTeacherName(cls.class_teacher_id)}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500">
-                  Class teachers handle administrative duties and student guidance
-                </p>
+                <p className="text-xs text-gray-500">Primary teacher responsible for this class</p>
               </div>
 
-              {/* Capacity Warning */}
-              {cls.actual_enrollment > cls.capacity && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-700 font-medium">
-                    ⚠️ Enrollment exceeds capacity by {cls.actual_enrollment - cls.capacity} students
-                  </p>
-                </div>
-              )}
-
-              {/* Utilization Info */}
-              {cls.capacity > 0 && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-700">
-                    📊 Utilization: {Math.round((cls.actual_enrollment / cls.capacity) * 100)}% 
-                    ({cls.actual_enrollment}/{cls.capacity} students)
-                  </p>
+              {/* Enrollment Status Indicator */}
+              {cls.actual_enrollment > 0 && (
+                <div className="p-3 rounded-lg bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Enrollment Status:</span>
+                    <span className={`text-sm font-semibold px-2 py-1 rounded ${
+                      cls.actual_enrollment > cls.capacity 
+                        ? 'bg-red-100 text-red-800' 
+                        : cls.actual_enrollment === cls.capacity
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-green-100 text-green-800'
+                    }`}>
+                      {cls.actual_enrollment}/{cls.capacity} students
+                    </span>
+                  </div>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        cls.actual_enrollment > cls.capacity 
+                          ? 'bg-red-500' 
+                          : cls.actual_enrollment === cls.capacity
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                      }`}
+                      style={{ width: `${Math.min((cls.actual_enrollment / cls.capacity) * 100, 100)}%` }}
+                    ></div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -346,32 +383,12 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
           type="button"
           variant="outline"
           onClick={addClass}
-          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-red-400 hover:bg-red-50 transition-all duration-300"
+          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-300"
         >
-          <Plus className="h-5 w-5 text-red-600" />
-          <span className="font-medium text-red-600">Add Another Class</span>
+          <Plus className="h-5 w-5 text-blue-600" />
+          <span className="font-medium text-blue-600">Add Another Class</span>
         </Button>
       </div>
-
-      {/* Summary Information */}
-      {classes.some(cls => cls.capacity > 0) && (
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-gray-800 mb-2">Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Total Classes:</span> {classes.filter(c => c.name).length}
-              </div>
-              <div>
-                <span className="font-medium">Total Capacity:</span> {classes.reduce((sum, c) => sum + (c.capacity || 0), 0)}
-              </div>
-              <div>
-                <span className="font-medium">Total Enrollment:</span> {classes.reduce((sum, c) => sum + (c.actual_enrollment || 0), 0)}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="flex justify-between pt-6 border-t">
         <Button 
@@ -384,7 +401,7 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
         <Button 
           onClick={handleSubmit} 
           disabled={loading}
-          className="px-8 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
+          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
         >
           {loading ? (
             <div className="flex items-center gap-2">

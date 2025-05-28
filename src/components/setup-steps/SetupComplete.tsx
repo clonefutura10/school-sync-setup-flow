@@ -167,7 +167,7 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
                       <div className="font-medium flex items-center gap-2">
                         {subject.name}
                         {subject.lab_required && (
-                          <FlaskConical className="h-3 w-3 text-orange-600" title="Lab Required" />
+                          <FlaskConical className="h-3 w-3 text-orange-600" />
                         )}
                       </div>
                       <div className="text-gray-600">{subject.code}</div>
