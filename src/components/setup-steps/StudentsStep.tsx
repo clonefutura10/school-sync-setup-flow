@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Wand2, Plus, Trash2, Users, Upload } from "lucide-react";
-import { BaseStepProps } from '@/types/setup';
+import { BaseStepProps, StudentData } from '@/types/setup';
 
 // Define proper TypeScript interface for student data
 interface StudentData {
@@ -141,13 +140,7 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
   };
 
   const handleAutoFill = () => {
-    // Ensure sample data conforms to our interface
-    const validatedSampleData: StudentData[] = SAMPLE_STUDENTS.map(student => ({
-      ...student,
-      assigned_class_id: student.assigned_class_id ?? null
-    }));
-    
-    setStudents(validatedSampleData);
+    setStudents(SAMPLE_STUDENTS);
     toast({
       title: "✨ Auto-filled successfully!",
       description: "Sample student data has been loaded into the form.",
@@ -185,7 +178,6 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
         return;
       }
 
-      // First, delete existing students for this school to prevent duplicates
       const { error: deleteError } = await supabase
         .from('students')
         .delete()
@@ -195,7 +187,6 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
         console.error('Error deleting existing students:', deleteError);
       }
 
-      // Prepare data for database insertion with proper typing
       const studentsWithSchoolId = validStudents.map(student => ({
         first_name: student.first_name.trim(),
         last_name: student.last_name.trim(),
@@ -282,7 +273,6 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
               )}
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-              {/* Student Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-700">First Name *</Label>
@@ -313,7 +303,6 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
                 </div>
               </div>
 
-              {/* Academic Info */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-700">Grade</Label>
@@ -344,7 +333,6 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
                 </div>
               </div>
 
-              {/* Parent Information */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-gray-700 border-b pb-2">Parent/Guardian Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

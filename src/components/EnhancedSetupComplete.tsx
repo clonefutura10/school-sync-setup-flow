@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   CheckCircle, 
   ExternalLink, 
@@ -21,7 +22,14 @@ import {
   FlaskConical,
   Award,
   QrCode,
-  Edit
+  Edit,
+  ChevronDown,
+  ChevronRight,
+  GraduationCap,
+  Clock,
+  CalendarDays,
+  School,
+  BookCopy
 } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 import { DataExport } from './DataExport';
@@ -39,7 +47,15 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
   schoolData
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['school', 'students', 'teachers']);
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => 
+      prev.includes(section) 
+        ? prev.filter(s => s !== section)
+        : [...prev, section]
+    );
+  };
 
   const handleGoToScheduler = () => {
     if (schoolId && schoolData) {
@@ -57,31 +73,64 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
     window.location.reload();
   };
 
-  // Data completeness calculations
+  // Enhanced data completeness calculations
   const getDataCompleteness = () => {
     const sections = [
-      { name: 'School Info', data: schoolData.name, weight: 15 },
-      { name: 'Academic Calendar', data: schoolData.academicCalendar, weight: 10 },
-      { name: 'Infrastructure', data: schoolData.infrastructure, weight: 15 },
-      { name: 'Students', data: schoolData.students, weight: 20 },
-      { name: 'Teachers', data: schoolData.teachers, weight: 20 },
-      { name: 'Subjects', data: schoolData.subjects, weight: 10 },
-      { name: 'Classes', data: schoolData.classes, weight: 5 },
-      { name: 'Mappings', data: schoolData.teacherSubjectMappings, weight: 5 },
+      { 
+        name: 'School Info', 
+        data: schoolData.name, 
+        weight: 15,
+        hasData: !!(schoolData.name && schoolData.principal_name && schoolData.email)
+      },
+      { 
+        name: 'Academic Calendar', 
+        data: schoolData.academicCalendar, 
+        weight: 10,
+        hasData: Array.isArray(schoolData.academicCalendar) && schoolData.academicCalendar.length > 0
+      },
+      { 
+        name: 'Infrastructure', 
+        data: schoolData.infrastructure, 
+        weight: 15,
+        hasData: Array.isArray(schoolData.infrastructure) && schoolData.infrastructure.length > 0
+      },
+      { 
+        name: 'Students', 
+        data: schoolData.students, 
+        weight: 20,
+        hasData: Array.isArray(schoolData.students) && schoolData.students.length > 0
+      },
+      { 
+        name: 'Teachers', 
+        data: schoolData.teachers, 
+        weight: 20,
+        hasData: Array.isArray(schoolData.teachers) && schoolData.teachers.length > 0
+      },
+      { 
+        name: 'Subjects', 
+        data: schoolData.subjects, 
+        weight: 10,
+        hasData: Array.isArray(schoolData.subjects) && schoolData.subjects.length > 0
+      },
+      { 
+        name: 'Classes', 
+        data: schoolData.classes, 
+        weight: 5,
+        hasData: Array.isArray(schoolData.classes) && schoolData.classes.length > 0
+      },
+      { 
+        name: 'Time Slots', 
+        data: schoolData.timeSlots, 
+        weight: 5,
+        hasData: Array.isArray(schoolData.timeSlots) && schoolData.timeSlots.length > 0
+      },
     ];
 
     let totalScore = 0;
     const sectionScores = sections.map(section => {
-      let score = 0;
-      if (section.data) {
-        if (Array.isArray(section.data)) {
-          score = section.data.length > 0 ? section.weight : 0;
-        } else {
-          score = section.weight;
-        }
-      }
+      const score = section.hasData ? section.weight : 0;
       totalScore += score;
-      return { ...section, score, percentage: (score / section.weight) * 100 };
+      return { ...section, score, percentage: section.hasData ? 100 : 0 };
     });
 
     return { sections: sectionScores, total: totalScore, percentage: totalScore };
@@ -95,9 +144,9 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
     const mappings = schoolData.teacherSubjectMappings || [];
 
     // Teacher workload validation
-    teachers.forEach(teacher => {
-      const teacherMappings = mappings.filter(m => m.teacher_id === teacher.id);
-      const totalPeriods = teacherMappings.reduce((sum, m) => sum + (m.periods_per_week || 0), 0);
+    teachers.forEach((teacher: any) => {
+      const teacherMappings = mappings.filter((m: any) => m.teacher_id === teacher.id);
+      const totalPeriods = teacherMappings.reduce((sum: number, m: any) => sum + (m.periods_per_week || 0), 0);
       const maxPeriods = (teacher.max_periods_per_day || 7) * 5;
       
       if (totalPeriods > maxPeriods) {
@@ -116,7 +165,7 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
     });
 
     // Class capacity validation
-    classes.forEach(cls => {
+    classes.forEach((cls: any) => {
       if (cls.actual_enrollment && cls.capacity && cls.actual_enrollment > cls.capacity) {
         results.push({
           type: 'warning',
@@ -151,17 +200,14 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
   const validationResults = runValidationChecks();
 
   const exportToPDF = () => {
-    // This would integrate with a PDF generation library
     console.log('Exporting to PDF...');
   };
 
   const exportToExcel = () => {
-    // This would integrate with an Excel export library
     console.log('Exporting to Excel...');
   };
 
   const generateQRCode = () => {
-    // This would generate a QR code with the setup data
     console.log('Generating QR code...');
   };
 
@@ -250,8 +296,8 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="details">Detailed Data</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="export">Export</TabsTrigger>
             </TabsList>
 
@@ -287,6 +333,237 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
               </div>
             </TabsContent>
 
+            <TabsContent value="details" className="space-y-6 mt-6">
+              {/* School Information Section */}
+              <Collapsible open={expandedSections.includes('school')} onOpenChange={() => toggleSection('school')}>
+                <CollapsibleTrigger asChild>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5 text-blue-600" />
+                        School Information
+                      </CardTitle>
+                      {expandedSections.includes('school') ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </CardHeader>
+                  </Card>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Card className="mt-2">
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                        <div><span className="font-medium">Name:</span> {schoolData.name || 'Not provided'}</div>
+                        <div><span className="font-medium">Principal:</span> {schoolData.principal_name || 'Not provided'}</div>
+                        <div><span className="font-medium">Type:</span> {schoolData.school_type || 'Not specified'}</div>
+                        <div><span className="font-medium">Academic Year:</span> {schoolData.academic_year || 'Not provided'}</div>
+                        <div><span className="font-medium">Terms:</span> {schoolData.number_of_terms || 'Not specified'} terms</div>
+                        <div><span className="font-medium">Working Days:</span> {schoolData.working_days?.join(', ') || 'Not specified'}</div>
+                        <div><span className="font-medium">Phone:</span> {schoolData.phone || 'Not provided'}</div>
+                        <div><span className="font-medium">Email:</span> {schoolData.email || 'Not provided'}</div>
+                        <div><span className="font-medium">Timezone:</span> {schoolData.timezone || 'UTC'}</div>
+                      </div>
+                      {schoolData.school_vision && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded">
+                          <span className="font-medium">Vision/Mission:</span>
+                          <p className="text-gray-700 mt-1">{schoolData.school_vision}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Academic Calendar Section */}
+              <Collapsible open={expandedSections.includes('calendar')} onOpenChange={() => toggleSection('calendar')}>
+                <CollapsibleTrigger asChild>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <CalendarDays className="h-5 w-5 text-indigo-600" />
+                        Academic Calendar ({schoolData.academicCalendar?.length || 0} events)
+                      </CardTitle>
+                      {expandedSections.includes('calendar') ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </CardHeader>
+                  </Card>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Card className="mt-2">
+                    <CardContent className="pt-6">
+                      {schoolData.academicCalendar && schoolData.academicCalendar.length > 0 ? (
+                        <div className="space-y-3">
+                          {schoolData.academicCalendar.map((event: any, index: number) => (
+                            <div key={index} className="p-3 bg-indigo-50 rounded border-l-4 border-indigo-200">
+                              <div className="font-medium">{event.event_name}</div>
+                              <div className="text-sm text-gray-600">{event.event_type} • {event.start_date} to {event.end_date}</div>
+                              {event.description && (
+                                <div className="text-sm text-gray-500 mt-1">{event.description}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-center py-4">No academic calendar events configured</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Infrastructure Section */}
+              <Collapsible open={expandedSections.includes('infrastructure')} onOpenChange={() => toggleSection('infrastructure')}>
+                <CollapsibleTrigger asChild>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <School className="h-5 w-5 text-emerald-600" />
+                        Infrastructure ({schoolData.infrastructure?.length || 0} facilities)
+                      </CardTitle>
+                      {expandedSections.includes('infrastructure') ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </CardHeader>
+                  </Card>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Card className="mt-2">
+                    <CardContent className="pt-6">
+                      {schoolData.infrastructure && schoolData.infrastructure.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {schoolData.infrastructure.map((room: any, index: number) => (
+                            <div key={index} className="p-3 bg-emerald-50 rounded border-l-4 border-emerald-200">
+                              <div className="font-medium flex items-center gap-2">
+                                <Building className="h-4 w-4" />
+                                {room.room_name}
+                              </div>
+                              <div className="text-sm text-gray-600">{room.room_type} • Capacity: {room.capacity}</div>
+                              {room.grade_assignment && (
+                                <div className="text-sm text-gray-500">Grade: {room.grade_assignment}</div>
+                              )}
+                              {room.equipment && room.equipment.length > 0 && (
+                                <div className="mt-2">
+                                  <div className="text-xs font-medium text-gray-700">Equipment:</div>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {room.equipment.map((eq: any, eqIndex: number) => (
+                                      <Badge key={eqIndex} variant="outline" className="text-xs">
+                                        {eq.name} ({eq.quantity})
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-center py-4">No infrastructure facilities configured</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Students Section */}
+              <Collapsible open={expandedSections.includes('students')} onOpenChange={() => toggleSection('students')}>
+                <CollapsibleTrigger asChild>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Users className="h-5 w-5 text-green-600" />
+                        Students ({schoolData.students?.length || 0})
+                      </CardTitle>
+                      {expandedSections.includes('students') ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </CardHeader>
+                  </Card>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Card className="mt-2">
+                    <CardContent className="pt-6">
+                      {schoolData.students && schoolData.students.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {schoolData.students.map((student: any, index: number) => (
+                            <div key={index} className="p-3 bg-green-50 rounded border-l-4 border-green-200">
+                              <div className="font-medium">{student.first_name} {student.last_name}</div>
+                              <div className="text-sm text-gray-600">ID: {student.student_id}</div>
+                              <div className="text-sm text-gray-600">
+                                {student.grade} {student.section && `- ${student.section}`}
+                              </div>
+                              {student.parent_name && (
+                                <div className="text-xs text-gray-500 mt-1">Parent: {student.parent_name}</div>
+                              )}
+                              {student.parent_email && (
+                                <div className="text-xs text-gray-500">{student.parent_email}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-center py-4">No students configured</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Teachers Section */}
+              <Collapsible open={expandedSections.includes('teachers')} onOpenChange={() => toggleSection('teachers')}>
+                <CollapsibleTrigger asChild>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <User className="h-5 w-5 text-purple-600" />
+                        Teachers ({schoolData.teachers?.length || 0})
+                      </CardTitle>
+                      {expandedSections.includes('teachers') ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </CardHeader>
+                  </Card>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Card className="mt-2">
+                    <CardContent className="pt-6">
+                      {schoolData.teachers && schoolData.teachers.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {schoolData.teachers.map((teacher: any, index: number) => (
+                            <div key={index} className="p-4 bg-purple-50 rounded border-l-4 border-purple-200">
+                              <div className="font-medium flex items-center gap-2">
+                                {teacher.first_name} {teacher.last_name}
+                                {teacher.is_class_teacher && (
+                                  <Badge variant="outline" className="text-xs">Class Teacher</Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600">{teacher.email}</div>
+                              <div className="text-sm text-gray-500">
+                                {teacher.department} • {teacher.experience_years} years exp.
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                Max {teacher.max_periods_per_day} periods/day
+                              </div>
+                              {teacher.qualification && (
+                                <div className="text-xs text-purple-600 mt-1">{teacher.qualification}</div>
+                              )}
+                              {teacher.subjects && teacher.subjects.length > 0 && (
+                                <div className="mt-2">
+                                  <div className="text-xs font-medium text-gray-700">Subjects:</div>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {teacher.subjects.map((subject: string, subIndex: number) => (
+                                      <Badge key={subIndex} variant="outline" className="text-xs">
+                                        {subject}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-center py-4">No teachers configured</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Continue with other sections... */}
+              {/* Subjects, Classes, Time Slots sections would follow the same pattern */}
+            </TabsContent>
+
             <TabsContent value="analytics" className="space-y-6 mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="p-4">
@@ -299,7 +576,7 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
                       const mappings = (schoolData.teacherSubjectMappings || []).filter((m: any) => m.teacher_id === teacher.id);
                       const totalPeriods = mappings.reduce((sum: number, m: any) => sum + (m.periods_per_week || 0), 0);
                       const maxPeriods = (teacher.max_periods_per_day || 7) * 5;
-                      const percentage = (totalPeriods / maxPeriods) * 100;
+                      const percentage = Math.min((totalPeriods / maxPeriods) * 100, 100);
                       
                       return (
                         <div key={index} className="space-y-1">
@@ -331,13 +608,6 @@ export const EnhancedSetupComplete: React.FC<BaseStepProps> = ({
                     })}
                   </div>
                 </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="details" className="space-y-6 mt-6">
-              {/* ... keep existing detailed data sections from SetupComplete.tsx ... */}
-              <div className="text-center text-gray-500">
-                Detailed data sections would be displayed here...
               </div>
             </TabsContent>
 
