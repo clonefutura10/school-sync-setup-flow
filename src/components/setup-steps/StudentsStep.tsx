@@ -8,22 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Wand2, Plus, Trash2, Users, Upload } from "lucide-react";
 import { BaseStepProps, StudentData } from '@/types/setup';
 
-// Define proper TypeScript interface for student data
-interface StudentData {
-  first_name: string;
-  last_name: string;
-  student_id: string;
-  grade: string;
-  section: string;
-  date_of_birth: string;
-  parent_name: string;
-  parent_email: string;
-  parent_phone: string;
-  address: string;
-  parent_contact: string;
-  assigned_class_id: string | null;
-}
-
 const SAMPLE_STUDENTS: StudentData[] = [
   { 
     first_name: "Emma", 
