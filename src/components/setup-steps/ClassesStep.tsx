@@ -1,55 +1,74 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Wand2, Plus, Trash2, Building, Users, UserCheck } from "lucide-react";
+import { Wand2, Plus, Trash2, Building, Users, Clock } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
-
-interface Teacher {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email?: string;
-  department?: string;
-}
 
 const SAMPLE_CLASSES = [
   { 
-    name: "Grade 1-A", 
-    grade: "1", 
+    name: "Grade 5-A", 
+    grade: "Grade 5", 
     section: "A", 
-    capacity: 25, 
+    capacity: 30, 
     room_number: "101",
-    actual_enrollment: 22
+    teacher_id: null,
+    periods_per_day: 7,
+    periods_per_week: 35,
+    actual_enrollment: 28,
+    class_teacher_id: null
   },
   { 
-    name: "Grade 1-B", 
-    grade: "1", 
+    name: "Grade 5-B", 
+    grade: "Grade 5", 
     section: "B", 
-    capacity: 25, 
+    capacity: 30, 
     room_number: "102",
-    actual_enrollment: 24
+    teacher_id: null,
+    periods_per_day: 7,
+    periods_per_week: 35,
+    actual_enrollment: 25,
+    class_teacher_id: null
   },
   { 
-    name: "Grade 2-A", 
-    grade: "2", 
+    name: "Grade 6-A", 
+    grade: "Grade 6", 
     section: "A", 
-    capacity: 30, 
+    capacity: 32, 
     room_number: "201",
-    actual_enrollment: 28
+    teacher_id: null,
+    periods_per_day: 8,
+    periods_per_week: 40,
+    actual_enrollment: 30,
+    class_teacher_id: null
   },
   { 
-    name: "Grade 3-A", 
-    grade: "3", 
+    name: "Grade 6-B", 
+    grade: "Grade 6", 
+    section: "B", 
+    capacity: 32, 
+    room_number: "202",
+    teacher_id: null,
+    periods_per_day: 8,
+    periods_per_week: 40,
+    actual_enrollment: 29,
+    class_teacher_id: null
+  },
+  { 
+    name: "Grade 7-A", 
+    grade: "Grade 7", 
     section: "A", 
-    capacity: 30, 
+    capacity: 35, 
     room_number: "301",
-    actual_enrollment: 29
+    teacher_id: null,
+    periods_per_day: 8,
+    periods_per_week: 40,
+    actual_enrollment: 33,
+    class_teacher_id: null
   }
 ];
 
@@ -65,38 +84,16 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
     section: '',
     capacity: 30,
     room_number: '',
+    teacher_id: null,
+    periods_per_day: 7,
+    periods_per_week: 35,
     actual_enrollment: 0,
-    class_teacher_id: ''
+    class_teacher_id: null
   }]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (schoolId) {
-      fetchTeachers();
-    }
-  }, [schoolId]);
-
-  const fetchTeachers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('teachers')
-        .select('id, first_name, last_name, email, department')
-        .eq('school_id', schoolId);
-
-      if (error) {
-        console.error('Error fetching teachers:', error);
-        return;
-      }
-
-      setTeachers(data || []);
-    } catch (error) {
-      console.error('Error fetching teachers:', error);
-    }
-  };
-
-  const handleInputChange = (index: number, field: string, value: string | number) => {
+  const handleInputChange = (index: number, field: string, value: string | number | null) => {
     const updatedClasses = [...classes];
     updatedClasses[index] = { ...updatedClasses[index], [field]: value };
     setClasses(updatedClasses);
@@ -109,8 +106,11 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
       section: '',
       capacity: 30,
       room_number: '',
+      teacher_id: null,
+      periods_per_day: 7,
+      periods_per_week: 35,
       actual_enrollment: 0,
-      class_teacher_id: ''
+      class_teacher_id: null
     }]);
   };
 
@@ -121,10 +121,7 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
   };
 
   const handleAutoFill = () => {
-    setClasses(SAMPLE_CLASSES.map(cls => ({
-      ...cls,
-      class_teacher_id: ''
-    })));
+    setClasses(SAMPLE_CLASSES);
     toast({
       title: "✨ Auto-filled successfully!",
       description: "Sample class data has been loaded into the form.",
@@ -138,12 +135,13 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
         title: "❌ Missing Information",
         description: "School ID is required. Please complete the school information step first.",
         variant: "destructive",
-        className: "fixed top-4 right-4 w-96",
       });
       return;
     }
 
+    console.log('Starting class data submission:', classes);
     setLoading(true);
+
     try {
       const validClasses = classes.filter(cls => 
         cls.name.trim() && cls.grade.trim()
@@ -154,13 +152,12 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
           title: "❌ Validation Error",
           description: "Please add at least one class with name and grade.",
           variant: "destructive",
-          className: "fixed top-4 right-4 w-96",
         });
         setLoading(false);
         return;
       }
 
-      // Delete existing classes for this school
+      // First, delete existing classes for this school to prevent duplicates
       const { error: deleteError } = await supabase
         .from('classes')
         .delete()
@@ -172,16 +169,21 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
 
       const classesWithSchoolId = validClasses.map(cls => ({
         ...cls,
-        school_id: schoolId,
-        class_teacher_id: cls.class_teacher_id || null
+        name: cls.name.trim(),
+        grade: cls.grade.trim(),
+        section: cls.section.trim() || null,
+        room_number: cls.room_number.trim() || null,
+        school_id: schoolId
       }));
+
+      console.log('Inserting classes:', classesWithSchoolId);
 
       const { error: insertError } = await supabase
         .from('classes')
         .insert(classesWithSchoolId);
 
       if (insertError) {
-        console.error('Detailed insert error:', insertError);
+        console.error('Database insert error:', insertError);
         throw new Error(`Failed to save classes: ${insertError.message}`);
       }
 
@@ -193,13 +195,13 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
 
       onStepComplete({ classes: validClasses });
       onNext();
+
     } catch (error) {
       console.error('Error saving classes:', error);
       toast({
         title: "❌ Save Failed",
         description: error instanceof Error ? error.message : "Failed to save classes. Please try again.",
         variant: "destructive",
-        className: "fixed top-4 right-4 w-96",
       });
     } finally {
       setLoading(false);
@@ -211,25 +213,25 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Add Classes</h2>
-          <p className="text-gray-600">Configure classes with teacher assignments and enrollment tracking</p>
+          <p className="text-gray-600">Configure class structure, capacity, and scheduling information</p>
         </div>
         <Button
           type="button"
           variant="outline"
           onClick={handleAutoFill}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 hover:from-purple-100 hover:to-indigo-100 transition-all duration-300"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 hover:from-orange-100 hover:to-red-100"
         >
-          <Wand2 className="h-5 w-5 text-purple-600" />
-          <span className="font-medium text-purple-700">Auto Fill Sample Data</span>
+          <Wand2 className="h-5 w-5 text-orange-600" />
+          <span className="font-medium text-orange-700">Auto Fill Sample Data</span>
         </Button>
       </div>
 
       <div className="space-y-6">
         {classes.map((cls, index) => (
-          <Card key={index} className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
+          <Card key={index} className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-t-lg">
               <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <Building className="h-5 w-5 text-blue-600" />
+                <Building className="h-5 w-5 text-orange-600" />
                 Class {index + 1}
               </CardTitle>
               {classes.length > 1 && (
@@ -237,22 +239,22 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => removeClass(index)}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-              {/* Basic Information */}
+              {/* Basic Class Information */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-700">Class Name *</Label>
                   <Input
                     value={cls.name}
                     onChange={(e) => handleInputChange(index, 'name', e.target.value)}
-                    placeholder="e.g., Grade 1-A"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                    placeholder="e.g., Grade 5-A"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -260,8 +262,8 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
                   <Input
                     value={cls.grade}
                     onChange={(e) => handleInputChange(index, 'grade', e.target.value)}
-                    placeholder="e.g., 1"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                    placeholder="e.g., Grade 5"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -270,111 +272,85 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
                     value={cls.section}
                     onChange={(e) => handleInputChange(index, 'section', e.target.value)}
                     placeholder="e.g., A"
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500 transition-colors"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
               </div>
 
-              {/* Capacity and Enrollment */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    Capacity
-                  </Label>
-                  <Input
-                    type="number"
-                    value={cls.capacity}
-                    onChange={(e) => handleInputChange(index, 'capacity', parseInt(e.target.value) || 30)}
-                    placeholder="30"
-                    min="1"
-                    max="100"
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500 transition-colors"
-                  />
-                  <p className="text-xs text-gray-500">Maximum students</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Room Number</Label>
-                  <Input
-                    value={cls.room_number}
-                    onChange={(e) => handleInputChange(index, 'room_number', e.target.value)}
-                    placeholder="e.g., 101"
-                    className="border-gray-300 focus:border-orange-500 focus:ring-orange-500 transition-colors"
-                  />
-                  <p className="text-xs text-gray-500">Assigned classroom</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Actual Enrollment</Label>
-                  <Input
-                    type="number"
-                    value={cls.actual_enrollment}
-                    onChange={(e) => handleInputChange(index, 'actual_enrollment', parseInt(e.target.value) || 0)}
-                    placeholder="0"
-                    min="0"
-                    max={cls.capacity}
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500 transition-colors"
-                  />
-                  <p className="text-xs text-gray-500">Currently enrolled students</p>
-                </div>
-              </div>
-
-              {/* Class Teacher Assignment */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                  <UserCheck className="h-4 w-4" />
-                  Class Teacher
-                </Label>
-                <Select
-                  value={cls.class_teacher_id}
-                  onValueChange={(value) => handleInputChange(index, 'class_teacher_id', value)}
-                >
-                  <SelectTrigger className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 transition-colors">
-                    <SelectValue placeholder="Select a class teacher" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No teacher assigned</SelectItem>
-                    {teachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.first_name} {teacher.last_name}
-                        {teacher.department && (
-                          <span className="text-gray-500 ml-2">({teacher.department})</span>
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">Primary teacher responsible for this class</p>
-              </div>
-
-              {/* Enrollment Status Indicator */}
-              {cls.actual_enrollment > 0 && (
-                <div className="p-3 rounded-lg bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Enrollment Status:</span>
-                    <span className={`text-sm font-semibold px-2 py-1 rounded ${
-                      cls.actual_enrollment > cls.capacity 
-                        ? 'bg-red-100 text-red-800' 
-                        : cls.actual_enrollment === cls.capacity
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-green-100 text-green-800'
-                    }`}>
-                      {cls.actual_enrollment}/{cls.capacity} students
-                    </span>
+              {/* Capacity and Room Information */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-gray-700 border-b pb-2 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Capacity & Room Details
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Capacity</Label>
+                    <Input
+                      type="number"
+                      value={cls.capacity}
+                      onChange={(e) => handleInputChange(index, 'capacity', parseInt(e.target.value) || 30)}
+                      placeholder="30"
+                      min="1"
+                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    />
                   </div>
-                  <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        cls.actual_enrollment > cls.capacity 
-                          ? 'bg-red-500' 
-                          : cls.actual_enrollment === cls.capacity
-                            ? 'bg-yellow-500'
-                            : 'bg-green-500'
-                      }`}
-                      style={{ width: `${Math.min((cls.actual_enrollment / cls.capacity) * 100, 100)}%` }}
-                    ></div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Room Number</Label>
+                    <Input
+                      value={cls.room_number}
+                      onChange={(e) => handleInputChange(index, 'room_number', e.target.value)}
+                      placeholder="e.g., 101"
+                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Current Enrollment</Label>
+                    <Input
+                      type="number"
+                      value={cls.actual_enrollment}
+                      onChange={(e) => handleInputChange(index, 'actual_enrollment', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                      min="0"
+                      className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
+                    />
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Schedule Configuration */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-gray-700 border-b pb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Schedule Configuration
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Periods Per Day</Label>
+                    <Input
+                      type="number"
+                      value={cls.periods_per_day}
+                      onChange={(e) => handleInputChange(index, 'periods_per_day', parseInt(e.target.value) || 7)}
+                      placeholder="7"
+                      min="1"
+                      max="12"
+                      className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Periods Per Week</Label>
+                    <Input
+                      type="number"
+                      value={cls.periods_per_week}
+                      onChange={(e) => handleInputChange(index, 'periods_per_week', parseInt(e.target.value) || 35)}
+                      placeholder="35"
+                      min="1"
+                      max="60"
+                      className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -383,10 +359,10 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
           type="button"
           variant="outline"
           onClick={addClass}
-          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-300"
+          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-orange-400 hover:bg-orange-50"
         >
-          <Plus className="h-5 w-5 text-blue-600" />
-          <span className="font-medium text-blue-600">Add Another Class</span>
+          <Plus className="h-5 w-5 text-orange-600" />
+          <span className="font-medium text-orange-600">Add Another Class</span>
         </Button>
       </div>
 
@@ -394,14 +370,14 @@ export const ClassesStep: React.FC<BaseStepProps> = ({
         <Button 
           variant="outline" 
           onClick={onPrevious}
-          className="px-8 py-3 border-gray-300 hover:bg-gray-50 transition-colors"
+          className="px-8 py-3"
         >
           ← Previous
         </Button>
         <Button 
           onClick={handleSubmit} 
           disabled={loading}
-          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
+          className="px-8 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-medium"
         >
           {loading ? (
             <div className="flex items-center gap-2">

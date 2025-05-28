@@ -3,66 +3,64 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Wand2, Plus, Trash2, User, GraduationCap, Clock } from "lucide-react";
+import { Wand2, Plus, Trash2, UserCheck, GraduationCap, Clock } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 
 const SAMPLE_TEACHERS = [
   { 
-    teacher_id: "T001", 
     first_name: "Sarah", 
     last_name: "Johnson", 
+    teacher_id: "T001", 
     email: "sarah.johnson@school.edu", 
-    phone: "+1234567890", 
-    department: "Mathematics", 
-    qualification: "M.Sc Mathematics",
+    phone: "+1-555-0201",
+    department: "Mathematics",
+    subjects: ["Mathematics", "Statistics"],
+    qualification: "M.Ed in Mathematics",
+    qualification_details: "Master's in Education with Mathematics specialization, 8 years experience",
     experience_years: 8,
-    is_class_teacher: true,
-    max_periods_per_day: 6,
-    qualification_details: "M.Sc Mathematics from State University, B.Ed from Teachers College"
-  },
-  { 
-    teacher_id: "T002", 
-    first_name: "Michael", 
-    last_name: "Chen", 
-    email: "michael.chen@school.edu", 
-    phone: "+1234567891", 
-    department: "Science", 
-    qualification: "M.Sc Physics",
-    experience_years: 12,
-    is_class_teacher: false,
+    max_hours_per_day: 6,
     max_periods_per_day: 7,
-    qualification_details: "M.Sc Physics, B.Ed, Specialized in Laboratory Management"
-  },
-  { 
-    teacher_id: "T003", 
-    first_name: "Emily", 
-    last_name: "Davis", 
-    email: "emily.davis@school.edu", 
-    phone: "+1234567892", 
-    department: "English", 
-    qualification: "M.A English Literature",
-    experience_years: 5,
     is_class_teacher: true,
-    max_periods_per_day: 5,
-    qualification_details: "M.A English Literature, B.Ed, Certificate in Creative Writing"
+    preferences: "Prefers morning classes",
+    availability_notes: "Available Monday-Friday, 8 AM - 4 PM"
   },
   { 
-    teacher_id: "T004", 
-    first_name: "Robert", 
-    last_name: "Wilson", 
-    email: "robert.wilson@school.edu", 
-    phone: "+1234567893", 
-    department: "Social Studies", 
-    qualification: "M.A History",
-    experience_years: 15,
-    is_class_teacher: false,
+    first_name: "Michael", 
+    last_name: "Davis", 
+    teacher_id: "T002", 
+    email: "michael.davis@school.edu", 
+    phone: "+1-555-0202",
+    department: "Science",
+    subjects: ["Physics", "Chemistry"],
+    qualification: "Ph.D in Physics",
+    qualification_details: "Ph.D in Physics from MIT, specialized in experimental physics",
+    experience_years: 12,
+    max_hours_per_day: 5,
     max_periods_per_day: 6,
-    qualification_details: "M.A History, B.Ed, Research experience in Ancient Civilizations"
+    is_class_teacher: false,
+    preferences: "Lab sessions preferred",
+    availability_notes: "Available all weekdays, prefers afternoon lab sessions"
+  },
+  { 
+    first_name: "Emily", 
+    last_name: "Brown", 
+    teacher_id: "T003", 
+    email: "emily.brown@school.edu", 
+    phone: "+1-555-0203",
+    department: "English",
+    subjects: ["English Literature", "Creative Writing"],
+    qualification: "M.A in English Literature",
+    qualification_details: "Master's in English Literature, specialization in modern poetry",
+    experience_years: 6,
+    max_hours_per_day: 6,
+    max_periods_per_day: 8,
+    is_class_teacher: true,
+    preferences: "Interactive sessions",
+    availability_notes: "Flexible schedule, available for extra-curricular activities"
   }
 ];
 
@@ -73,22 +71,26 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
   schoolId
 }) => {
   const [teachers, setTeachers] = useState([{
-    teacher_id: '',
     first_name: '',
     last_name: '',
+    teacher_id: '',
     email: '',
     phone: '',
     department: '',
+    subjects: [] as string[],
     qualification: '',
+    qualification_details: '',
     experience_years: 0,
+    max_hours_per_day: 6,
+    max_periods_per_day: 7,
     is_class_teacher: false,
-    max_periods_per_day: 6,
-    qualification_details: ''
+    preferences: '',
+    availability_notes: ''
   }]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleInputChange = (index: number, field: string, value: string | number | boolean) => {
+  const handleInputChange = (index: number, field: string, value: string | number | boolean | string[]) => {
     const updatedTeachers = [...teachers];
     updatedTeachers[index] = { ...updatedTeachers[index], [field]: value };
     setTeachers(updatedTeachers);
@@ -96,17 +98,21 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
 
   const addTeacher = () => {
     setTeachers([...teachers, {
-      teacher_id: '',
       first_name: '',
       last_name: '',
+      teacher_id: '',
       email: '',
       phone: '',
       department: '',
+      subjects: [],
       qualification: '',
+      qualification_details: '',
       experience_years: 0,
+      max_hours_per_day: 6,
+      max_periods_per_day: 7,
       is_class_teacher: false,
-      max_periods_per_day: 6,
-      qualification_details: ''
+      preferences: '',
+      availability_notes: ''
     }]);
   };
 
@@ -125,35 +131,6 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
     });
   };
 
-  const validateForm = () => {
-    const validTeachers = teachers.filter(teacher => 
-      teacher.first_name.trim() && teacher.last_name.trim() && teacher.teacher_id.trim()
-    );
-
-    if (validTeachers.length === 0) {
-      toast({
-        title: "❌ Validation Error",
-        description: "Please add at least one teacher with first name, last name, and teacher ID.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    // Check for duplicate teacher IDs
-    const teacherIds = validTeachers.map(t => t.teacher_id.trim());
-    const duplicateIds = teacherIds.filter((id, index) => teacherIds.indexOf(id) !== index);
-    if (duplicateIds.length > 0) {
-      toast({
-        title: "❌ Validation Error",
-        description: `Duplicate teacher IDs found: ${duplicateIds.join(', ')}`,
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    return true;
-  };
-
   const handleSubmit = async () => {
     if (!schoolId) {
       toast({
@@ -164,13 +141,23 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
       return;
     }
 
-    if (!validateForm()) return;
-
+    console.log('Starting teacher data submission:', teachers);
     setLoading(true);
+
     try {
       const validTeachers = teachers.filter(teacher => 
         teacher.first_name.trim() && teacher.last_name.trim() && teacher.teacher_id.trim()
       );
+
+      if (validTeachers.length === 0) {
+        toast({
+          title: "❌ Validation Error",
+          description: "Please add at least one teacher with first name, last name, and teacher ID.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       // First, delete existing teachers for this school to prevent duplicates
       const { error: deleteError } = await supabase
@@ -192,15 +179,20 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
         department: teacher.department.trim() || null,
         qualification: teacher.qualification.trim() || null,
         qualification_details: teacher.qualification_details.trim() || null,
+        preferences: teacher.preferences.trim() || 'no preference',
+        availability_notes: teacher.availability_notes.trim() || null,
+        subjects: teacher.subjects,
         school_id: schoolId
       }));
+
+      console.log('Inserting teachers:', teachersWithSchoolId);
 
       const { error: insertError } = await supabase
         .from('teachers')
         .insert(teachersWithSchoolId);
 
       if (insertError) {
-        console.error('Detailed insert error:', insertError);
+        console.error('Database insert error:', insertError);
         throw new Error(`Failed to save teachers: ${insertError.message}`);
       }
 
@@ -212,6 +204,7 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
 
       onStepComplete({ teachers: validTeachers });
       onNext();
+
     } catch (error) {
       console.error('Error saving teachers:', error);
       toast({
@@ -229,13 +222,13 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Add Teachers</h2>
-          <p className="text-gray-600">Configure your teaching staff with detailed information</p>
+          <p className="text-gray-600">Enter teacher information, qualifications, and teaching preferences</p>
         </div>
         <Button
           type="button"
           variant="outline"
           onClick={handleAutoFill}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 hover:from-purple-100 hover:to-indigo-100 transition-all duration-300"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 hover:from-purple-100 hover:to-blue-100"
         >
           <Wand2 className="h-5 w-5 text-purple-600" />
           <span className="font-medium text-purple-700">Auto Fill Sample Data</span>
@@ -244,10 +237,10 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
 
       <div className="space-y-6">
         {teachers.map((teacher, index) => (
-          <Card key={index} className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 hover:shadow-xl transition-all duration-300">
+          <Card key={index} className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-lg">
               <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <User className="h-5 w-5 text-purple-600" />
+                <UserCheck className="h-5 w-5 text-purple-600" />
                 Teacher {index + 1}
               </CardTitle>
               {teachers.length > 1 && (
@@ -255,7 +248,7 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => removeTeacher(index)}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -265,21 +258,12 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
               {/* Basic Information */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Teacher ID *</Label>
-                  <Input
-                    value={teacher.teacher_id}
-                    onChange={(e) => handleInputChange(index, 'teacher_id', e.target.value)}
-                    placeholder="T001"
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-700">First Name *</Label>
                   <Input
                     value={teacher.first_name}
                     onChange={(e) => handleInputChange(index, 'first_name', e.target.value)}
-                    placeholder="John"
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    placeholder="Enter first name"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -287,7 +271,16 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
                   <Input
                     value={teacher.last_name}
                     onChange={(e) => handleInputChange(index, 'last_name', e.target.value)}
-                    placeholder="Doe"
+                    placeholder="Enter last name"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Teacher ID *</Label>
+                  <Input
+                    value={teacher.teacher_id}
+                    onChange={(e) => handleInputChange(index, 'teacher_id', e.target.value)}
+                    placeholder="Enter teacher ID"
                     className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                   />
                 </div>
@@ -301,8 +294,8 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
                     type="email"
                     value={teacher.email}
                     onChange={(e) => handleInputChange(index, 'email', e.target.value)}
-                    placeholder="john.doe@school.edu"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Enter email address"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -310,100 +303,118 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
                   <Input
                     value={teacher.phone}
                     onChange={(e) => handleInputChange(index, 'phone', e.target.value)}
-                    placeholder="+1234567890"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Enter phone number"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
               </div>
 
               {/* Academic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-4">
+                <h4 className="font-semibold text-gray-700 border-b pb-2 flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Academic Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Department</Label>
+                    <Input
+                      value={teacher.department}
+                      onChange={(e) => handleInputChange(index, 'department', e.target.value)}
+                      placeholder="e.g., Mathematics"
+                      className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Qualification</Label>
+                    <Input
+                      value={teacher.qualification}
+                      onChange={(e) => handleInputChange(index, 'qualification', e.target.value)}
+                      placeholder="e.g., M.Ed in Mathematics"
+                      className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Department</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Qualification Details</Label>
                   <Input
-                    value={teacher.department}
-                    onChange={(e) => handleInputChange(index, 'department', e.target.value)}
-                    placeholder="Mathematics"
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    value={teacher.qualification_details}
+                    onChange={(e) => handleInputChange(index, 'qualification_details', e.target.value)}
+                    placeholder="Detailed qualification information"
+                    className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Basic Qualification</Label>
-                  <Input
-                    value={teacher.qualification}
-                    onChange={(e) => handleInputChange(index, 'qualification', e.target.value)}
-                    placeholder="M.Sc Mathematics"
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    Experience (Years)
-                  </Label>
+                  <Label className="text-sm font-semibold text-gray-700">Experience (Years)</Label>
                   <Input
                     type="number"
                     value={teacher.experience_years}
                     onChange={(e) => handleInputChange(index, 'experience_years', parseInt(e.target.value) || 0)}
-                    placeholder="5"
+                    placeholder="Years of experience"
                     min="0"
-                    max="50"
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
                   />
                 </div>
               </div>
 
-              {/* Teaching Configuration */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    Max Periods Per Day
-                  </Label>
-                  <Input
-                    type="number"
-                    value={teacher.max_periods_per_day}
-                    onChange={(e) => handleInputChange(index, 'max_periods_per_day', parseInt(e.target.value) || 6)}
-                    placeholder="6"
-                    min="1"
-                    max="10"
-                    className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
-                  />
-                  <p className="text-xs text-gray-500">Maximum teaching periods per day</p>
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                    <GraduationCap className="h-4 w-4" />
-                    Role Assignment
-                  </Label>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`class-teacher-${index}`}
-                      checked={teacher.is_class_teacher}
-                      onCheckedChange={(checked) => handleInputChange(index, 'is_class_teacher', checked)}
+              {/* Teaching Preferences */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-gray-700 border-b pb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Teaching Preferences & Workload
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Max Hours Per Day</Label>
+                    <Input
+                      type="number"
+                      value={teacher.max_hours_per_day}
+                      onChange={(e) => handleInputChange(index, 'max_hours_per_day', parseInt(e.target.value) || 6)}
+                      min="1"
+                      max="10"
+                      className="border-gray-300 focus:border-red-500 focus:ring-red-500"
                     />
-                    <Label htmlFor={`class-teacher-${index}`} className="text-sm">
-                      Assign as Class Teacher
-                    </Label>
                   </div>
-                  <p className="text-xs text-gray-500">Class teachers have additional responsibilities</p>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Max Periods Per Day</Label>
+                    <Input
+                      type="number"
+                      value={teacher.max_periods_per_day}
+                      onChange={(e) => handleInputChange(index, 'max_periods_per_day', parseInt(e.target.value) || 7)}
+                      min="1"
+                      max="12"
+                      className="border-gray-300 focus:border-red-500 focus:ring-red-500"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {/* Detailed Qualifications */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                  <GraduationCap className="h-4 w-4" />
-                  Detailed Qualifications
-                </Label>
-                <Textarea
-                  value={teacher.qualification_details}
-                  onChange={(e) => handleInputChange(index, 'qualification_details', e.target.value)}
-                  placeholder="Detailed educational background, certifications, and specializations..."
-                  rows={3}
-                  className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                />
-                <p className="text-xs text-gray-500">Include degrees, certifications, and special training</p>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`class-teacher-${index}`}
+                    checked={teacher.is_class_teacher}
+                    onCheckedChange={(checked) => handleInputChange(index, 'is_class_teacher', checked)}
+                  />
+                  <Label htmlFor={`class-teacher-${index}`} className="text-sm font-medium">
+                    Assigned as Class Teacher
+                  </Label>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Teaching Preferences</Label>
+                  <Input
+                    value={teacher.preferences}
+                    onChange={(e) => handleInputChange(index, 'preferences', e.target.value)}
+                    placeholder="e.g., Prefers morning classes"
+                    className="border-gray-300 focus:border-pink-500 focus:ring-pink-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Availability Notes</Label>
+                  <Input
+                    value={teacher.availability_notes}
+                    onChange={(e) => handleInputChange(index, 'availability_notes', e.target.value)}
+                    placeholder="e.g., Available Monday-Friday, 8 AM - 4 PM"
+                    className="border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -413,7 +424,7 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
           type="button"
           variant="outline"
           onClick={addTeacher}
-          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-all duration-300"
+          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-purple-400 hover:bg-purple-50"
         >
           <Plus className="h-5 w-5 text-purple-600" />
           <span className="font-medium text-purple-600">Add Another Teacher</span>
@@ -424,14 +435,14 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
         <Button 
           variant="outline" 
           onClick={onPrevious}
-          className="px-8 py-3 border-gray-300 hover:bg-gray-50 transition-colors"
+          className="px-8 py-3"
         >
           ← Previous
         </Button>
         <Button 
           onClick={handleSubmit} 
           disabled={loading}
-          className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
+          className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium"
         >
           {loading ? (
             <div className="flex items-center gap-2">

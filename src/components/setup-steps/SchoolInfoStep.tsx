@@ -5,171 +5,119 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Wand2, GraduationCap, User, Phone, Mail, Calendar, Globe, BookOpen, Building } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
-
-const SAMPLE_SCHOOLS = [
-  {
-    name: "Greenfield Elementary School",
-    address: "123 Education Lane, Springfield, IL 62701",
-    phone: "(555) 123-4567",
-    email: "info@greenfield.edu",
-    principal_name: "Dr. Sarah Johnson",
-    academic_year: "2024-25",
-    timezone: "America/Chicago",
-    number_of_terms: 2,
-    working_days: 180,
-    school_vision: "Nurturing young minds to become confident, creative, and caring global citizens",
-    school_type: "Primary"
-  },
-  {
-    name: "Riverside High School",
-    address: "456 Learning Boulevard, Austin, TX 78701",
-    phone: "(555) 987-6543",
-    email: "admin@riverside.edu",
-    principal_name: "Mr. Michael Davis",
-    academic_year: "2024-25",
-    timezone: "America/Chicago",
-    number_of_terms: 3,
-    working_days: 220,
-    school_vision: "Empowering students to excel academically, socially, and personally in a dynamic world",
-    school_type: "Secondary"
-  },
-  {
-    name: "Oakwood International School",
-    address: "789 Knowledge Street, Seattle, WA 98101",
-    phone: "(555) 456-7890",
-    email: "contact@oakwood.edu",
-    principal_name: "Ms. Emily Chen",
-    academic_year: "2024-25",
-    timezone: "America/Los_Angeles",
-    number_of_terms: 2,
-    working_days: 200,
-    school_vision: "Creating innovative learners and leaders for tomorrow's challenges",
-    school_type: "Higher Secondary"
-  }
-];
-
-const ACADEMIC_YEARS = ["2024-25", "2025-26", "2026-27", "2027-28"];
-const SCHOOL_TYPES = ["Primary", "Secondary", "Higher Secondary", "All"];
+import { GraduationCap, MapPin, Mail, Phone, User, Calendar, Eye } from "lucide-react";
 
 export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   onNext,
-  onStepComplete,
-  schoolId
+  onStepComplete
 }) => {
-  const [formData, setFormData] = useState({
+  const [schoolData, setSchoolData] = useState({
     name: '',
     address: '',
     phone: '',
     email: '',
     principal_name: '',
-    academic_year: '2024-25',
-    timezone: 'UTC',
-    number_of_terms: 2,
-    working_days: 220,
+    academic_year: '',
+    number_of_terms: 3,
+    working_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as string[],
     school_vision: '',
-    school_type: ''
+    school_type: 'Public',
+    academic_year_start: '',
+    academic_year_end: '',
+    timezone: 'UTC'
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: name === 'number_of_terms' || name === 'working_days' ? parseInt(value) || 0 : value 
+  const handleInputChange = (field: string, value: string | number | string[]) => {
+    console.log(`Updating field ${field} with value:`, value);
+    setSchoolData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleWorkingDay = (day: string) => {
+    setSchoolData(prev => ({
+      ...prev,
+      working_days: prev.working_days.includes(day)
+        ? prev.working_days.filter(d => d !== day)
+        : [...prev.working_days, day]
     }));
   };
 
-  const handleSelectChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleTermsChange = (value: string) => {
-    setFormData(prev => ({ ...prev, number_of_terms: parseInt(value) }));
-  };
-
-  const handleAutoFill = () => {
-    const randomSchool = SAMPLE_SCHOOLS[Math.floor(Math.random() * SAMPLE_SCHOOLS.length)];
-    setFormData(randomSchool);
+  const handleSubmit = async () => {
+    console.log('Starting school data submission:', schoolData);
     
-    toast({
-      title: "✨ Auto-filled successfully!",
-      description: "Sample school data has been loaded into the form.",
-      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-    });
-  };
-
-  const validateForm = () => {
-    if (!formData.name.trim()) {
+    if (!schoolData.name.trim()) {
       toast({
-        title: "Validation Error",
+        title: "❌ Validation Error",
         description: "School name is required.",
         variant: "destructive",
       });
-      return false;
+      return;
     }
-    if (formData.working_days < 150 || formData.working_days > 250) {
-      toast({
-        title: "Validation Error",
-        description: "Working days should be between 150 and 250.",
-        variant: "destructive",
-      });
-      return false;
-    }
-    return true;
-  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
     setLoading(true);
-
     try {
-      if (schoolId) {
-        // Update existing school
-        const { error } = await supabase
-          .from('schools')
-          .update(formData)
-          .eq('id', schoolId);
+      // Prepare school data for database
+      const schoolInsertData = {
+        name: schoolData.name.trim(),
+        address: schoolData.address.trim() || null,
+        phone: schoolData.phone.trim() || null,
+        email: schoolData.email.trim() || null,
+        principal_name: schoolData.principal_name.trim() || null,
+        academic_year: schoolData.academic_year.trim() || null,
+        number_of_terms: schoolData.number_of_terms,
+        working_days: schoolData.working_days,
+        school_vision: schoolData.school_vision.trim() || null,
+        school_type: schoolData.school_type,
+        academic_year_start: schoolData.academic_year_start || null,
+        academic_year_end: schoolData.academic_year_end || null,
+        timezone: schoolData.timezone
+      };
 
-        if (error) throw error;
-        toast({
-          title: "Success",
-          description: "School information updated successfully!",
-        });
-        onStepComplete({ ...formData, schoolId });
-      } else {
-        // Create new school
-        const { data, error } = await supabase
-          .from('schools')
-          .insert([formData])
-          .select()
-          .single();
+      console.log('Inserting school data:', schoolInsertData);
 
-        if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "School created successfully!",
-        });
-        onStepComplete({ ...formData, schoolId: data.id });
+      const { data: insertedSchool, error: insertError } = await supabase
+        .from('schools')
+        .insert([schoolInsertData])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        throw new Error(`Failed to save school information: ${insertError.message}`);
       }
 
-      onNext();
-    } catch (error) {
-      console.error('Error saving school:', error);
+      if (!insertedSchool) {
+        throw new Error('No school data returned after insert');
+      }
+
+      console.log('School created successfully:', insertedSchool);
+
       toast({
-        title: "Error",
-        description: "Failed to save school information. Please try again.",
+        title: "✅ Success!",
+        description: "School information saved successfully!",
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+      });
+
+      // Pass both school data and ID to next step
+      const completeSchoolData = { 
+        ...schoolData, 
+        schoolId: insertedSchool.id 
+      };
+      
+      onStepComplete(completeSchoolData);
+      onNext();
+
+    } catch (error) {
+      console.error('Error saving school information:', error);
+      toast({
+        title: "❌ Save Failed",
+        description: error instanceof Error ? error.message : "Failed to save school information. Please try again.",
         variant: "destructive",
+        className: "fixed top-4 right-4 w-96",
       });
     } finally {
       setLoading(false);
@@ -178,266 +126,193 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
   return (
     <div className="space-y-8">
-      {/* Header Section */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-100 rounded-lg">
-            <GraduationCap className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">School Information</h2>
-            <p className="text-gray-600">Set up your school's comprehensive details</p>
-          </div>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleAutoFill}
-          className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 border-0"
-        >
-          <Wand2 className="h-4 w-4" />
-          Auto Fill Sample Data
-        </Button>
+      <div className="text-center space-y-2">
+        <GraduationCap className="h-12 w-12 text-blue-600 mx-auto" />
+        <h2 className="text-3xl font-bold text-gray-800">School Information</h2>
+        <p className="text-gray-600">Enter your school's basic details to get started</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Basic Information Card */}
-        <Card className="border-0 shadow-md bg-gradient-to-r from-blue-50 to-indigo-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <GraduationCap className="h-5 w-5 text-blue-600" />
-              Basic Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
+          <CardTitle className="text-xl text-gray-800">Basic Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-2 font-medium">
-                <GraduationCap className="h-4 w-4 text-blue-600" />
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <GraduationCap className="h-4 w-4" />
                 School Name *
               </Label>
               <Input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
+                value={schoolData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder="Enter school name"
-                className="border-blue-200 focus:border-blue-400"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="principal_name" className="flex items-center gap-2 font-medium">
-                <User className="h-4 w-4 text-purple-600" />
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <User className="h-4 w-4" />
                 Principal Name
               </Label>
               <Input
-                id="principal_name"
-                name="principal_name"
-                value={formData.principal_name}
-                onChange={handleInputChange}
-                placeholder="Enter principal name"
-                className="border-purple-200 focus:border-purple-400"
+                value={schoolData.principal_name}
+                onChange={(e) => handleInputChange('principal_name', e.target.value)}
+                placeholder="Enter principal's name"
+                className="border-gray-300 focus:border-green-500 focus:ring-green-500"
               />
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2 font-medium">
-                <Building className="h-4 w-4 text-green-600" />
-                School Type
-              </Label>
-              <Select value={formData.school_type} onValueChange={(value) => handleSelectChange('school_type', value)}>
-                <SelectTrigger className="border-green-200 focus:border-green-400">
-                  <SelectValue placeholder="Select school type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SCHOOL_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Address
+            </Label>
+            <Textarea
+              value={schoolData.address}
+              onChange={(e) => handleInputChange('address', e.target.value)}
+              placeholder="Enter school address"
+              className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+            />
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="timezone" className="flex items-center gap-2 font-medium">
-                <Globe className="h-4 w-4 text-indigo-600" />
-                Timezone
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Phone Number
               </Label>
               <Input
-                id="timezone"
-                name="timezone"
-                value={formData.timezone}
-                onChange={handleInputChange}
-                placeholder="UTC"
-                className="border-indigo-200 focus:border-indigo-400"
+                value={schoolData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="Enter phone number"
+                className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
               />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Academic Configuration Card */}
-        <Card className="border-0 shadow-md bg-gradient-to-r from-green-50 to-emerald-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Calendar className="h-5 w-5 text-green-600" />
-              Academic Configuration
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label className="flex items-center gap-2 font-medium">
-                <Calendar className="h-4 w-4 text-green-600" />
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email Address
+              </Label>
+              <Input
+                value={schoolData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+                className="border-gray-300 focus:border-red-500 focus:ring-red-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
                 Academic Year
               </Label>
-              <Select value={formData.academic_year} onValueChange={(value) => handleSelectChange('academic_year', value)}>
-                <SelectTrigger className="border-green-200 focus:border-green-400">
-                  <SelectValue placeholder="Select academic year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACADEMIC_YEARS.map((year) => (
-                    <SelectItem key={year} value={year}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="working_days" className="flex items-center gap-2 font-medium">
-                <BookOpen className="h-4 w-4 text-blue-600" />
-                Working Days (per year)
-              </Label>
               <Input
-                id="working_days"
-                name="working_days"
+                value={schoolData.academic_year}
+                onChange={(e) => handleInputChange('academic_year', e.target.value)}
+                placeholder="e.g., 2024-2025"
+                className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">Number of Terms</Label>
+              <Input
                 type="number"
-                value={formData.working_days}
-                onChange={handleInputChange}
-                min="150"
-                max="250"
-                placeholder="220"
-                className="border-blue-200 focus:border-blue-400"
+                value={schoolData.number_of_terms}
+                onChange={(e) => handleInputChange('number_of_terms', parseInt(e.target.value) || 3)}
+                min="2"
+                max="4"
+                className="border-gray-300 focus:border-pink-500 focus:ring-pink-500"
               />
-              <p className="text-xs text-gray-500">Typically 180-220 days</p>
             </div>
-
-            <div className="space-y-3 md:col-span-2">
-              <Label className="flex items-center gap-2 font-medium">
-                <Calendar className="h-4 w-4 text-green-600" />
-                Number of Terms
-              </Label>
-              <RadioGroup 
-                value={formData.number_of_terms.toString()} 
-                onValueChange={handleTermsChange}
-                className="flex gap-6"
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">School Type</Label>
+              <select
+                className="w-full p-2 border border-gray-300 rounded-md focus:border-teal-500 focus:ring-teal-500"
+                value={schoolData.school_type}
+                onChange={(e) => handleInputChange('school_type', e.target.value)}
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="2" id="terms-2" />
-                  <Label htmlFor="terms-2">2 Terms (Semester System)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="3" id="terms-3" />
-                  <Label htmlFor="terms-3">3 Terms (Trimester System)</Label>
-                </div>
-              </RadioGroup>
+                <option value="Public">Public</option>
+                <option value="Private">Private</option>
+                <option value="Charter">Charter</option>
+                <option value="International">International</option>
+              </select>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Contact Information Card */}
-        <Card className="border-0 shadow-md bg-gradient-to-r from-orange-50 to-yellow-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Phone className="h-5 w-5 text-orange-600" />
-              Contact Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              School Vision/Mission
+            </Label>
+            <Textarea
+              value={schoolData.school_vision}
+              onChange={(e) => handleInputChange('school_vision', e.target.value)}
+              placeholder="Enter your school's vision or mission statement"
+              className="border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-gray-700">Working Days</Label>
+            <div className="flex flex-wrap gap-2">
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                <Button
+                  key={day}
+                  type="button"
+                  variant={schoolData.working_days.includes(day) ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => toggleWorkingDay(day)}
+                  className="transition-all duration-200"
+                >
+                  {day}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="phone" className="flex items-center gap-2 font-medium">
-                <Phone className="h-4 w-4 text-green-600" />
-                Phone
-              </Label>
+              <Label className="text-sm font-semibold text-gray-700">Academic Year Start</Label>
               <Input
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="(555) 123-4567"
-                className="border-green-200 focus:border-green-400"
+                type="date"
+                value={schoolData.academic_year_start}
+                onChange={(e) => handleInputChange('academic_year_start', e.target.value)}
+                className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2 font-medium">
-                <Mail className="h-4 w-4 text-blue-600" />
-                Email
-              </Label>
+              <Label className="text-sm font-semibold text-gray-700">Academic Year End</Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="school@example.com"
-                className="border-blue-200 focus:border-blue-400"
+                type="date"
+                value={schoolData.academic_year_end}
+                onChange={(e) => handleInputChange('academic_year_end', e.target.value)}
+                className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="address" className="font-medium">School Address</Label>
-              <Textarea
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                placeholder="Enter complete school address"
-                rows={3}
-                className="border-orange-200 focus:border-orange-400"
-              />
+      <div className="flex justify-end pt-6 border-t">
+        <Button 
+          onClick={handleSubmit} 
+          disabled={loading}
+          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
+        >
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Saving...
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Vision & Mission Card */}
-        <Card className="border-0 shadow-md bg-gradient-to-r from-purple-50 to-pink-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <BookOpen className="h-5 w-5 text-purple-600" />
-              School Vision & Mission
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="school_vision" className="font-medium">School Vision/Mission Statement</Label>
-              <Textarea
-                id="school_vision"
-                name="school_vision"
-                value={formData.school_vision}
-                onChange={handleInputChange}
-                placeholder="Describe your school's vision, mission, and core values..."
-                rows={4}
-                className="border-purple-200 focus:border-purple-400"
-              />
-              <p className="text-xs text-gray-500">This will help define your school's educational philosophy and goals</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Submit Button */}
-        <div className="flex justify-end pt-4">
-          <Button 
-            type="submit" 
-            disabled={loading}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg"
-          >
-            {loading ? 'Saving...' : 'Continue to Next Step'}
-          </Button>
-        </div>
-      </form>
+          ) : (
+            'Save & Continue →'
+          )}
+        </Button>
+      </div>
     </div>
   );
 };
