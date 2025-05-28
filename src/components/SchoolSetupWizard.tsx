@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,17 +12,34 @@ import { SubjectsStep } from './setup-steps/SubjectsStep';
 import { ClassesStep } from './setup-steps/ClassesStep';
 import { TimeSlotsStep } from './setup-steps/TimeSlotsStep';
 import { SetupComplete } from './setup-steps/SetupComplete';
+import { AcademicCalendarStep } from './setup-steps/AcademicCalendarStep';
+import { InfrastructureStep } from './setup-steps/InfrastructureStep';
+import { TeacherSubjectMappingStep } from './setup-steps/TeacherSubjectMappingStep';
 import { BaseStepProps } from '@/types/setup';
-import { GraduationCap, Users, UserCheck, BookOpen, Building, Clock, CheckCircle } from 'lucide-react';
+import { 
+  GraduationCap, 
+  Users, 
+  UserCheck, 
+  BookOpen, 
+  Building, 
+  Clock, 
+  CheckCircle,
+  CalendarDays,
+  School,
+  BookCopy
+} from 'lucide-react';
 
 const STEPS = [
   { id: 1, title: 'School Information', component: SchoolInfoStep, needsSchoolCreated: true, icon: GraduationCap, color: 'text-blue-600' },
-  { id: 2, title: 'Students', component: StudentsStep, needsSchoolCreated: false, icon: Users, color: 'text-green-600' },
-  { id: 3, title: 'Teachers', component: TeachersStep, needsSchoolCreated: false, icon: UserCheck, color: 'text-purple-600' },
-  { id: 4, title: 'Subjects', component: SubjectsStep, needsSchoolCreated: false, icon: BookOpen, color: 'text-orange-600' },
-  { id: 5, title: 'Classes', component: ClassesStep, needsSchoolCreated: false, icon: Building, color: 'text-red-600' },
-  { id: 6, title: 'Time Slots', component: TimeSlotsStep, needsSchoolCreated: false, icon: Clock, color: 'text-indigo-600' },
-  { id: 7, title: 'Complete', component: SetupComplete, needsSchoolCreated: false, icon: CheckCircle, color: 'text-emerald-600' },
+  { id: 2, title: 'Academic Calendar', component: AcademicCalendarStep, needsSchoolCreated: false, icon: CalendarDays, color: 'text-indigo-600' },
+  { id: 3, title: 'Infrastructure', component: InfrastructureStep, needsSchoolCreated: false, icon: School, color: 'text-emerald-600' },
+  { id: 4, title: 'Students', component: StudentsStep, needsSchoolCreated: false, icon: Users, color: 'text-green-600' },
+  { id: 5, title: 'Teachers', component: TeachersStep, needsSchoolCreated: false, icon: UserCheck, color: 'text-purple-600' },
+  { id: 6, title: 'Subjects', component: SubjectsStep, needsSchoolCreated: false, icon: BookOpen, color: 'text-orange-600' },
+  { id: 7, title: 'Classes', component: ClassesStep, needsSchoolCreated: false, icon: Building, color: 'text-red-600' },
+  { id: 8, title: 'Teacher-Subject Mapping', component: TeacherSubjectMappingStep, needsSchoolCreated: false, icon: BookCopy, color: 'text-pink-600' },
+  { id: 9, title: 'Time Slots', component: TimeSlotsStep, needsSchoolCreated: false, icon: Clock, color: 'text-amber-600' },
+  { id: 10, title: 'Complete', component: SetupComplete, needsSchoolCreated: false, icon: CheckCircle, color: 'text-emerald-600' },
 ];
 
 export const SchoolSetupWizard = () => {
@@ -76,6 +94,15 @@ export const SchoolSetupWizard = () => {
     if (stepData.timeSlots) {
       localStorage.setItem('schoolTimeSlots', JSON.stringify(stepData.timeSlots));
     }
+    if (stepData.academicCalendar) {
+      localStorage.setItem('academicCalendar', JSON.stringify(stepData.academicCalendar));
+    }
+    if (stepData.infrastructure) {
+      localStorage.setItem('infrastructure', JSON.stringify(stepData.infrastructure));
+    }
+    if (stepData.teacherSubjectMappings) {
+      localStorage.setItem('teacherSubjectMappings', JSON.stringify(stepData.teacherSubjectMappings));
+    }
   };
 
   useEffect(() => {
@@ -114,10 +141,24 @@ export const SchoolSetupWizard = () => {
   };
 
   const renderStepIndicator = () => {
+    // Calculate visible range of steps to show (for responsive design)
+    let visibleSteps = STEPS;
+    const maxVisibleSteps = 5; // Maximum number of steps to show on smaller screens
+    
+    // Create a mobile-friendly subset of steps centered around the current step
+    if (window.innerWidth < 1024 && STEPS.length > maxVisibleSteps) {
+      const startIdx = Math.max(0, Math.min(
+        currentStep - Math.ceil(maxVisibleSteps / 2),
+        STEPS.length - maxVisibleSteps
+      ));
+      visibleSteps = STEPS.slice(startIdx, startIdx + maxVisibleSteps);
+    }
+
     return (
       <div className="flex items-center justify-center mb-8 overflow-x-auto pb-4">
         <div className="flex items-center space-x-2 min-w-max">
-          {STEPS.map((step, index) => {
+          {visibleSteps.map((step, index) => {
+            const actualStepIndex = STEPS.findIndex(s => s.id === step.id);
             const isCompleted = currentStep > step.id;
             const isCurrent = currentStep === step.id;
             const IconComponent = step.icon;
@@ -143,10 +184,10 @@ export const SchoolSetupWizard = () => {
                     {step.title}
                   </span>
                 </div>
-                {index < STEPS.length - 1 && (
+                {index < visibleSteps.length - 1 && (
                   <div className={`
                     w-8 h-0.5 transition-colors duration-300
-                    ${isCompleted ? 'bg-green-500' : 'bg-gray-300'}
+                    ${actualStepIndex < currentStep - 1 ? 'bg-green-500' : 'bg-gray-300'}
                   `} />
                 )}
               </div>

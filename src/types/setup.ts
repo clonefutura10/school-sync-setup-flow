@@ -8,6 +8,3 @@ export interface BaseStepProps {
   totalSteps: number;
   schoolData: any;
 }
-
-// Remove the separate SchoolInfoStepProps interface since it's causing issues
-// SchoolInfoStep will now use BaseStepProps and handle school creation internally
