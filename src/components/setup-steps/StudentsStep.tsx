@@ -9,7 +9,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { Wand2, Plus, Trash2, Users, Upload } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 
-const SAMPLE_STUDENTS = [
+// Define proper TypeScript interface for student data
+interface StudentData {
+  first_name: string;
+  last_name: string;
+  student_id: string;
+  grade: string;
+  section: string;
+  date_of_birth: string;
+  parent_name: string;
+  parent_email: string;
+  parent_phone: string;
+  address: string;
+  parent_contact: string;
+  assigned_class_id: string | null;
+}
+
+const SAMPLE_STUDENTS: StudentData[] = [
   { 
     first_name: "Emma", 
     last_name: "Johnson", 
@@ -21,7 +37,8 @@ const SAMPLE_STUDENTS = [
     parent_email: "sarah.johnson@email.com",
     parent_phone: "+1-555-0101",
     address: "123 Oak Street, Springfield",
-    parent_contact: "Mother: Sarah Johnson, +1-555-0101"
+    parent_contact: "Mother: Sarah Johnson, +1-555-0101",
+    assigned_class_id: null
   },
   { 
     first_name: "Liam", 
@@ -34,7 +51,8 @@ const SAMPLE_STUDENTS = [
     parent_email: "michael.smith@email.com", 
     parent_phone: "+1-555-0102",
     address: "456 Pine Avenue, Springfield",
-    parent_contact: "Father: Michael Smith, +1-555-0102"
+    parent_contact: "Father: Michael Smith, +1-555-0102",
+    assigned_class_id: null
   },
   { 
     first_name: "Olivia", 
@@ -47,7 +65,8 @@ const SAMPLE_STUDENTS = [
     parent_email: "jessica.brown@email.com",
     parent_phone: "+1-555-0103", 
     address: "789 Maple Drive, Springfield",
-    parent_contact: "Mother: Jessica Brown, +1-555-0103"
+    parent_contact: "Mother: Jessica Brown, +1-555-0103",
+    assigned_class_id: null
   },
   { 
     first_name: "Noah", 
@@ -60,7 +79,8 @@ const SAMPLE_STUDENTS = [
     parent_email: "david.davis@email.com",
     parent_phone: "+1-555-0104",
     address: "321 Elm Street, Springfield", 
-    parent_contact: "Father: David Davis, +1-555-0104"
+    parent_contact: "Father: David Davis, +1-555-0104",
+    assigned_class_id: null
   },
   { 
     first_name: "Ava", 
@@ -73,9 +93,26 @@ const SAMPLE_STUDENTS = [
     parent_email: "lisa.wilson@email.com",
     parent_phone: "+1-555-0105",
     address: "654 Cedar Lane, Springfield",
-    parent_contact: "Mother: Lisa Wilson, +1-555-0105"
+    parent_contact: "Mother: Lisa Wilson, +1-555-0105",
+    assigned_class_id: null
   }
 ];
+
+// Helper function to create empty student object with proper typing
+const createEmptyStudent = (): StudentData => ({
+  first_name: '',
+  last_name: '',
+  student_id: '',
+  grade: '',
+  section: '',
+  date_of_birth: '',
+  parent_name: '',
+  parent_email: '',
+  parent_phone: '',
+  address: '',
+  parent_contact: '',
+  assigned_class_id: null
+});
 
 export const StudentsStep: React.FC<BaseStepProps> = ({
   onNext,
@@ -83,44 +120,18 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
   onStepComplete,
   schoolId
 }) => {
-  const [students, setStudents] = useState([{
-    first_name: '',
-    last_name: '',
-    student_id: '',
-    grade: '',
-    section: '',
-    date_of_birth: '',
-    parent_name: '',
-    parent_email: '',
-    parent_phone: '',
-    address: '',
-    parent_contact: '',
-    assigned_class_id: null
-  }]);
+  const [students, setStudents] = useState<StudentData[]>([createEmptyStudent()]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleInputChange = (index: number, field: string, value: string) => {
+  const handleInputChange = (index: number, field: keyof StudentData, value: string) => {
     const updatedStudents = [...students];
     updatedStudents[index] = { ...updatedStudents[index], [field]: value };
     setStudents(updatedStudents);
   };
 
   const addStudent = () => {
-    setStudents([...students, {
-      first_name: '',
-      last_name: '',
-      student_id: '',
-      grade: '',
-      section: '',
-      date_of_birth: '',
-      parent_name: '',
-      parent_email: '',
-      parent_phone: '',
-      address: '',
-      parent_contact: '',
-      assigned_class_id: null
-    }]);
+    setStudents([...students, createEmptyStudent()]);
   };
 
   const removeStudent = (index: number) => {
@@ -130,12 +141,22 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
   };
 
   const handleAutoFill = () => {
-    setStudents(SAMPLE_STUDENTS);
+    // Ensure sample data conforms to our interface
+    const validatedSampleData: StudentData[] = SAMPLE_STUDENTS.map(student => ({
+      ...student,
+      assigned_class_id: student.assigned_class_id ?? null
+    }));
+    
+    setStudents(validatedSampleData);
     toast({
       title: "✨ Auto-filled successfully!",
       description: "Sample student data has been loaded into the form.",
       className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
     });
+  };
+
+  const validateStudentData = (student: StudentData): boolean => {
+    return !!(student.first_name?.trim() && student.last_name?.trim() && student.student_id?.trim());
   };
 
   const handleSubmit = async () => {
@@ -152,9 +173,7 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
     setLoading(true);
     
     try {
-      const validStudents = students.filter(student => 
-        student.first_name.trim() && student.last_name.trim() && student.student_id.trim()
-      );
+      const validStudents = students.filter(validateStudentData);
 
       if (validStudents.length === 0) {
         toast({
@@ -176,24 +195,24 @@ export const StudentsStep: React.FC<BaseStepProps> = ({
         console.error('Error deleting existing students:', deleteError);
       }
 
+      // Prepare data for database insertion with proper typing
       const studentsWithSchoolId = validStudents.map(student => ({
-        ...student,
         first_name: student.first_name.trim(),
         last_name: student.last_name.trim(),
         student_id: student.student_id.trim(),
-        grade: student.grade.trim() || null,
-        section: student.section.trim() || null,
+        grade: student.grade?.trim() || null,
+        section: student.section?.trim() || null,
         date_of_birth: student.date_of_birth || null,
-        parent_name: student.parent_name.trim() || null,
-        parent_email: student.parent_email.trim() || null,
-        parent_phone: student.parent_phone.trim() || null,
-        address: student.address.trim() || null,
-        parent_contact: student.parent_contact.trim() || null,
+        parent_name: student.parent_name?.trim() || null,
+        parent_email: student.parent_email?.trim() || null,
+        parent_phone: student.parent_phone?.trim() || null,
+        address: student.address?.trim() || null,
+        parent_contact: student.parent_contact?.trim() || null,
         assigned_class_id: student.assigned_class_id,
         school_id: schoolId
       }));
 
-      console.log('Inserting students:', studentsWithSchoolId);
+      console.log('Inserting students with validated data:', studentsWithSchoolId);
 
       const { error: insertError } = await supabase
         .from('students')
