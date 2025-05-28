@@ -4,46 +4,65 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Wand2, Plus, Trash2 } from "lucide-react";
+import { Wand2, Plus, Trash2, User, GraduationCap, Clock } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 
 const SAMPLE_TEACHERS = [
-  {
-    teacher_id: "TCH001",
-    first_name: "Dr. Maria",
-    last_name: "Rodriguez",
-    email: "maria.rodriguez@school.edu",
-    phone: "(555) 222-0001",
-    department: "Mathematics",
-    subjects: ["Algebra", "Calculus", "Statistics"],
-    qualification: "PhD in Mathematics",
-    experience_years: 15
+  { 
+    teacher_id: "T001", 
+    first_name: "Sarah", 
+    last_name: "Johnson", 
+    email: "sarah.johnson@school.edu", 
+    phone: "+1234567890", 
+    department: "Mathematics", 
+    qualification: "M.Sc Mathematics",
+    experience_years: 8,
+    is_class_teacher: true,
+    max_periods_per_day: 6,
+    qualification_details: "M.Sc Mathematics from State University, B.Ed from Teachers College"
   },
-  {
-    teacher_id: "TCH002",
-    first_name: "Mr. James",
-    last_name: "Wilson",
-    email: "james.wilson@school.edu",
-    phone: "(555) 222-0002",
-    department: "Science",
-    subjects: ["Physics", "Chemistry"],
-    qualification: "M.Sc in Physics",
-    experience_years: 8
+  { 
+    teacher_id: "T002", 
+    first_name: "Michael", 
+    last_name: "Chen", 
+    email: "michael.chen@school.edu", 
+    phone: "+1234567891", 
+    department: "Science", 
+    qualification: "M.Sc Physics",
+    experience_years: 12,
+    is_class_teacher: false,
+    max_periods_per_day: 7,
+    qualification_details: "M.Sc Physics, B.Ed, Specialized in Laboratory Management"
   },
-  {
-    teacher_id: "TCH003",
-    first_name: "Ms. Sarah",
-    last_name: "Thompson",
-    email: "sarah.thompson@school.edu",
-    phone: "(555) 222-0003",
-    department: "English",
-    subjects: ["English Literature", "Creative Writing"],
-    qualification: "M.A in English Literature",
-    experience_years: 12
+  { 
+    teacher_id: "T003", 
+    first_name: "Emily", 
+    last_name: "Davis", 
+    email: "emily.davis@school.edu", 
+    phone: "+1234567892", 
+    department: "English", 
+    qualification: "M.A English Literature",
+    experience_years: 5,
+    is_class_teacher: true,
+    max_periods_per_day: 5,
+    qualification_details: "M.A English Literature, B.Ed, Certificate in Creative Writing"
+  },
+  { 
+    teacher_id: "T004", 
+    first_name: "Robert", 
+    last_name: "Wilson", 
+    email: "robert.wilson@school.edu", 
+    phone: "+1234567893", 
+    department: "Social Studies", 
+    qualification: "M.A History",
+    experience_years: 15,
+    is_class_teacher: false,
+    max_periods_per_day: 6,
+    qualification_details: "M.A History, B.Ed, Research experience in Ancient Civilizations"
   }
 ];
 
@@ -60,23 +79,19 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
     email: '',
     phone: '',
     department: '',
-    subjects: [] as string[],
     qualification: '',
-    experience_years: 0
+    experience_years: 0,
+    is_class_teacher: false,
+    max_periods_per_day: 6,
+    qualification_details: ''
   }]);
-  const [bulkData, setBulkData] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleInputChange = (index: number, field: string, value: string | number | string[]) => {
+  const handleInputChange = (index: number, field: string, value: string | number | boolean) => {
     const updatedTeachers = [...teachers];
     updatedTeachers[index] = { ...updatedTeachers[index], [field]: value };
     setTeachers(updatedTeachers);
-  };
-
-  const handleSubjectsChange = (index: number, subjects: string) => {
-    const subjectsArray = subjects.split(',').map(s => s.trim()).filter(s => s);
-    handleInputChange(index, 'subjects', subjectsArray);
   };
 
   const addTeacher = () => {
@@ -87,9 +102,11 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
       email: '',
       phone: '',
       department: '',
-      subjects: [],
       qualification: '',
-      experience_years: 0
+      experience_years: 0,
+      is_class_teacher: false,
+      max_periods_per_day: 6,
+      qualification_details: ''
     }]);
   };
 
@@ -102,93 +119,60 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
   const handleAutoFill = () => {
     setTeachers(SAMPLE_TEACHERS);
     toast({
-      title: "Auto-filled successfully!",
-      description: "Teacher data has been auto-filled with sample data.",
-      className: "fixed top-4 right-4 z-50",
+      title: "✨ Auto-filled successfully!",
+      description: "Sample teacher data has been loaded into the form.",
+      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
     });
   };
 
-  const processBulkData = () => {
-    try {
-      const lines = bulkData.trim().split('\n');
-      const headers = lines[0].split(',').map(h => h.trim());
-      const teacherData = [];
+  const validateForm = () => {
+    const validTeachers = teachers.filter(teacher => 
+      teacher.first_name.trim() && teacher.last_name.trim() && teacher.teacher_id.trim()
+    );
 
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        const teacher: any = {};
-        
-        headers.forEach((header, index) => {
-          const key = header.toLowerCase().replace(/\s+/g, '_');
-          if (key === 'subjects') {
-            teacher[key] = values[index] ? values[index].split(';').map(s => s.trim()) : [];
-          } else if (key === 'experience_years') {
-            teacher[key] = parseInt(values[index]) || 0;
-          } else {
-            teacher[key] = values[index] || '';
-          }
-        });
-        
-        teacherData.push(teacher);
-      }
-
-      setTeachers(teacherData);
-      setBulkData('');
+    if (validTeachers.length === 0) {
       toast({
-        title: "Import successful!",
-        description: `Imported ${teacherData.length} teachers from CSV data.`,
-        className: "fixed top-4 right-4 z-50",
-      });
-    } catch (error) {
-      toast({
-        title: "Import failed",
-        description: "Failed to parse CSV data. Please check the format.",
+        title: "❌ Validation Error",
+        description: "Please add at least one teacher with first name, last name, and teacher ID.",
         variant: "destructive",
-        className: "fixed top-4 right-4 z-50",
       });
+      return false;
     }
-  };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        setBulkData(content);
-      };
-      reader.readAsText(file);
+    // Check for duplicate teacher IDs
+    const teacherIds = validTeachers.map(t => t.teacher_id.trim());
+    const duplicateIds = teacherIds.filter((id, index) => teacherIds.indexOf(id) !== index);
+    if (duplicateIds.length > 0) {
+      toast({
+        title: "❌ Validation Error",
+        description: `Duplicate teacher IDs found: ${duplicateIds.join(', ')}`,
+        variant: "destructive",
+      });
+      return false;
     }
+
+    return true;
   };
 
   const handleSubmit = async () => {
     if (!schoolId) {
       toast({
-        title: "Error",
+        title: "❌ Missing Information",
         description: "School ID is required. Please complete the school information step first.",
         variant: "destructive",
-        className: "fixed top-4 right-4 z-50",
       });
       return;
     }
 
+    if (!validateForm()) return;
+
     setLoading(true);
     try {
       const validTeachers = teachers.filter(teacher => 
-        teacher.teacher_id && teacher.first_name && teacher.last_name
+        teacher.first_name.trim() && teacher.last_name.trim() && teacher.teacher_id.trim()
       );
 
-      if (validTeachers.length === 0) {
-        toast({
-          title: "Validation error",
-          description: "Please add at least one teacher with ID, first name, and last name.",
-          variant: "destructive",
-          className: "fixed top-4 right-4 z-50",
-        });
-        return;
-      }
-
-      // Delete existing teachers for this school to avoid duplicates
+      // First, delete existing teachers for this school to prevent duplicates
       const { error: deleteError } = await supabase
         .from('teachers')
         .delete()
@@ -196,29 +180,34 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
 
       if (deleteError) {
         console.error('Error deleting existing teachers:', deleteError);
-        toast({
-          title: "Warning",
-          description: "Could not clear existing teacher data, but proceeding with save.",
-          variant: "destructive",
-          className: "fixed top-4 right-4 z-50",
-        });
       }
 
       const teachersWithSchoolId = validTeachers.map(teacher => ({
         ...teacher,
+        first_name: teacher.first_name.trim(),
+        last_name: teacher.last_name.trim(),
+        teacher_id: teacher.teacher_id.trim(),
+        email: teacher.email.trim() || null,
+        phone: teacher.phone.trim() || null,
+        department: teacher.department.trim() || null,
+        qualification: teacher.qualification.trim() || null,
+        qualification_details: teacher.qualification_details.trim() || null,
         school_id: schoolId
       }));
 
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('teachers')
         .insert(teachersWithSchoolId);
 
-      if (error) throw error;
+      if (insertError) {
+        console.error('Detailed insert error:', insertError);
+        throw new Error(`Failed to save teachers: ${insertError.message}`);
+      }
 
       toast({
-        title: "Success!",
-        description: `${validTeachers.length} teachers saved successfully!`,
-        className: "fixed top-4 right-4 z-50",
+        title: "✅ Success!",
+        description: `${validTeachers.length} teachers added successfully!`,
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
 
       onStepComplete({ teachers: validTeachers });
@@ -226,10 +215,9 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
     } catch (error) {
       console.error('Error saving teachers:', error);
       toast({
-        title: "Save failed",
-        description: "Failed to save teachers. Please try again.",
+        title: "❌ Save Failed",
+        description: error instanceof Error ? error.message : "Failed to save teachers. Please try again.",
         variant: "destructive",
-        className: "fixed top-4 right-4 z-50",
       });
     } finally {
       setLoading(false);
@@ -240,74 +228,75 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-gray-800">Add Teachers</h2>
-          <p className="text-gray-600 mt-2">Add your school's teaching staff information</p>
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Add Teachers</h2>
+          <p className="text-gray-600">Configure your teaching staff with detailed information</p>
         </div>
         <Button
           type="button"
           variant="outline"
           onClick={handleAutoFill}
-          className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 hover:from-purple-600 hover:to-pink-600"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 hover:from-purple-100 hover:to-indigo-100 transition-all duration-300"
         >
-          <Wand2 className="h-4 w-4" />
-          Auto Fill Sample Data
+          <Wand2 className="h-5 w-5 text-purple-600" />
+          <span className="font-medium text-purple-700">Auto Fill Sample Data</span>
         </Button>
       </div>
 
-      <Tabs defaultValue="manual" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-lg">
-          <TabsTrigger value="manual" className="rounded-md">Manual Entry</TabsTrigger>
-          <TabsTrigger value="bulk" className="rounded-md">Bulk Upload</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="manual" className="space-y-6">
-          {teachers.map((teacher, index) => (
-            <Card key={index} className="shadow-lg border-0 bg-white hover:shadow-xl transition-shadow duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
-                <CardTitle className="text-lg font-semibold text-gray-800">
-                  Teacher {index + 1}
-                </CardTitle>
-                {teachers.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeTeacher(index)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+      <div className="space-y-6">
+        {teachers.map((teacher, index) => (
+          <Card key={index} className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-lg">
+              <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <User className="h-5 w-5 text-purple-600" />
+                Teacher {index + 1}
+              </CardTitle>
+              {teachers.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeTeacher(index)}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-6 p-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Teacher ID *</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Teacher ID *</Label>
                   <Input
                     value={teacher.teacher_id}
                     onChange={(e) => handleInputChange(index, 'teacher_id', e.target.value)}
-                    placeholder="TCH001"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="T001"
+                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">First Name *</Label>
+                  <Label className="text-sm font-semibold text-gray-700">First Name *</Label>
                   <Input
                     value={teacher.first_name}
                     onChange={(e) => handleInputChange(index, 'first_name', e.target.value)}
                     placeholder="John"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Last Name *</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Last Name *</Label>
                   <Input
                     value={teacher.last_name}
                     onChange={(e) => handleInputChange(index, 'last_name', e.target.value)}
                     placeholder="Doe"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                   />
                 </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Email</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Email</Label>
                   <Input
                     type="email"
                     value={teacher.email}
@@ -317,130 +306,141 @@ export const TeachersStep: React.FC<BaseStepProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Phone</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Phone</Label>
                   <Input
                     value={teacher.phone}
                     onChange={(e) => handleInputChange(index, 'phone', e.target.value)}
-                    placeholder="(555) 123-4567"
+                    placeholder="+1234567890"
                     className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
+              </div>
+
+              {/* Academic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Department</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Department</Label>
                   <Input
                     value={teacher.department}
                     onChange={(e) => handleInputChange(index, 'department', e.target.value)}
                     placeholder="Mathematics"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Experience (Years)</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Basic Qualification</Label>
+                  <Input
+                    value={teacher.qualification}
+                    onChange={(e) => handleInputChange(index, 'qualification', e.target.value)}
+                    placeholder="M.Sc Mathematics"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    Experience (Years)
+                  </Label>
                   <Input
                     type="number"
                     value={teacher.experience_years}
                     onChange={(e) => handleInputChange(index, 'experience_years', parseInt(e.target.value) || 0)}
                     placeholder="5"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    min="0"
+                    max="50"
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-sm font-medium text-gray-700">Subjects (comma-separated)</Label>
-                  <Input
-                    value={teacher.subjects.join(', ')}
-                    onChange={(e) => handleSubjectsChange(index, e.target.value)}
-                    placeholder="Mathematics, Algebra, Calculus"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-3">
-                  <Label className="text-sm font-medium text-gray-700">Qualification</Label>
-                  <Input
-                    value={teacher.qualification}
-                    onChange={(e) => handleInputChange(index, 'qualification', e.target.value)}
-                    placeholder="M.Sc in Mathematics"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addTeacher}
-            className="w-full flex items-center gap-2 border-dashed border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50 h-12"
-          >
-            <Plus className="h-5 w-5" />
-            Add Another Teacher
-          </Button>
-        </TabsContent>
-
-        <TabsContent value="bulk" className="space-y-6">
-          <Card className="shadow-lg border-0 bg-white">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 rounded-t-lg">
-              <CardTitle className="text-xl font-semibold text-gray-800">Bulk Upload Teachers</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 p-6">
-              <div>
-                <Label htmlFor="file-upload" className="text-sm font-medium text-gray-700">Upload CSV File</Label>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="mt-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
               </div>
 
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-800 font-medium mb-2">CSV Format Instructions:</p>
-                <p className="text-sm text-blue-700">teacher_id, first_name, last_name, email, phone, department, subjects, qualification, experience_years</p>
-                <p className="text-sm text-blue-600 mt-1">Note: Separate multiple subjects with semicolons (;)</p>
+              {/* Teaching Configuration */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    Max Periods Per Day
+                  </Label>
+                  <Input
+                    type="number"
+                    value={teacher.max_periods_per_day}
+                    onChange={(e) => handleInputChange(index, 'max_periods_per_day', parseInt(e.target.value) || 6)}
+                    placeholder="6"
+                    min="1"
+                    max="10"
+                    className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                  />
+                  <p className="text-xs text-gray-500">Maximum teaching periods per day</p>
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                    <GraduationCap className="h-4 w-4" />
+                    Role Assignment
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`class-teacher-${index}`}
+                      checked={teacher.is_class_teacher}
+                      onCheckedChange={(checked) => handleInputChange(index, 'is_class_teacher', checked)}
+                    />
+                    <Label htmlFor={`class-teacher-${index}`} className="text-sm">
+                      Assign as Class Teacher
+                    </Label>
+                  </div>
+                  <p className="text-xs text-gray-500">Class teachers have additional responsibilities</p>
+                </div>
               </div>
 
-              <div>
-                <Label htmlFor="bulk-data" className="text-sm font-medium text-gray-700">Or paste CSV data directly:</Label>
+              {/* Detailed Qualifications */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                  <GraduationCap className="h-4 w-4" />
+                  Detailed Qualifications
+                </Label>
                 <Textarea
-                  id="bulk-data"
-                  value={bulkData}
-                  onChange={(e) => setBulkData(e.target.value)}
-                  placeholder="teacher_id,first_name,last_name,email,department,subjects,qualification,experience_years
-TCH001,John,Doe,john@school.edu,Mathematics,Algebra;Calculus,M.Sc in Mathematics,5
-TCH002,Jane,Smith,jane@school.edu,Science,Physics;Chemistry,PhD in Physics,8"
-                  rows={10}
-                  className="mt-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  value={teacher.qualification_details}
+                  onChange={(e) => handleInputChange(index, 'qualification_details', e.target.value)}
+                  placeholder="Detailed educational background, certifications, and specializations..."
+                  rows={3}
+                  className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                 />
+                <p className="text-xs text-gray-500">Include degrees, certifications, and special training</p>
               </div>
-
-              <Button 
-                onClick={processBulkData} 
-                disabled={!bulkData}
-                className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Process CSV Data
-              </Button>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        ))}
 
-      <div className="flex justify-between pt-6 border-t border-gray-200">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addTeacher}
+          className="w-full flex items-center gap-3 py-4 border-2 border-dashed border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-all duration-300"
+        >
+          <Plus className="h-5 w-5 text-purple-600" />
+          <span className="font-medium text-purple-600">Add Another Teacher</span>
+        </Button>
+      </div>
+
+      <div className="flex justify-between pt-6 border-t">
         <Button 
           variant="outline" 
           onClick={onPrevious}
-          className="px-8 py-2 border-gray-300 hover:bg-gray-50"
+          className="px-8 py-3 border-gray-300 hover:bg-gray-50 transition-colors"
         >
-          Previous
+          ← Previous
         </Button>
         <Button 
           onClick={handleSubmit} 
           disabled={loading}
-          className="px-8 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
+          className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
         >
-          {loading ? 'Saving Teachers...' : 'Next Step'}
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Saving...
+            </div>
+          ) : (
+            'Next Step →'
+          )}
         </Button>
       </div>
     </div>
