@@ -18,6 +18,7 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
   const [credentialsGenerated, setCredentialsGenerated] = useState(false);
 
   const generateCredentials = () => {
+    console.log('Generating credentials...');
     const schoolName = schoolData?.name || 'School';
     const cleanSchoolName = schoolName.toLowerCase().replace(/[^a-z0-9]/g, '');
     const username = `admin_${cleanSchoolName}`;
@@ -29,6 +30,7 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
       password += charset.charAt(Math.floor(Math.random() * charset.length));
     }
     
+    console.log('Generated credentials:', { username, password });
     setCredentials({ username, password });
     setCredentialsGenerated(true);
     
@@ -119,56 +121,42 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
         </div>
       </div>
 
-      {/* Generate Credentials Button */}
-      {!credentialsGenerated && (
-        <Card className="border-4 border-blue-500 shadow-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
-          <CardHeader className="text-center pb-6">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-blue-600 rounded-full shadow-lg">
-                <Key className="h-10 w-10 text-white" />
-              </div>
+      {/* PROMINENT Generate Credentials Section */}
+      <Card className="border-4 border-blue-500 shadow-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+        <CardHeader className="text-center pb-6">
+          <div className="flex justify-center mb-4">
+            <div className="p-4 bg-blue-600 rounded-full shadow-lg">
+              <Key className="h-10 w-10 text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold text-blue-700 mb-2">
-              🔐 Generate Your Login Credentials
-            </CardTitle>
-            <p className="text-blue-600 font-semibold text-lg">
-              Click the button below to create your secure login credentials
-            </p>
-          </CardHeader>
-          <CardContent className="px-8 pb-8">
-            <div className="flex justify-center">
-              <Button
-                onClick={generateCredentials}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-12 py-6 text-2xl font-bold shadow-xl transform hover:scale-105 transition-all duration-200"
-                size="lg"
-              >
-                <Key className="h-8 w-8 mr-4" />
-                Generate Credentials Now!
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          <CardTitle className="text-3xl font-bold text-blue-700 mb-2">
+            🔐 Generate Your Login Credentials
+          </CardTitle>
+          <p className="text-blue-600 font-semibold text-lg">
+            Click the button below to create your secure login credentials
+          </p>
+        </CardHeader>
+        <CardContent className="px-8 pb-8">
+          <div className="flex justify-center mb-6">
+            <Button
+              onClick={generateCredentials}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-12 py-6 text-2xl font-bold shadow-xl transform hover:scale-105 transition-all duration-200"
+              size="lg"
+            >
+              <Key className="h-8 w-8 mr-4" />
+              Generate Credentials Now!
+            </Button>
+          </div>
 
-      {/* Login Credentials - Show only after generation */}
-      {credentialsGenerated && (
-        <Card className="border-4 border-green-500 shadow-2xl bg-gradient-to-br from-green-50 via-emerald-50 to-green-100">
-          <CardHeader className="text-center pb-6">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-green-600 rounded-full shadow-lg">
-                <Key className="h-10 w-10 text-white" />
+          {/* Show credentials immediately after generation */}
+          {credentialsGenerated && (
+            <div className="bg-white rounded-2xl p-8 border-2 border-green-300 shadow-xl mt-6">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-green-700">🎉 Your Login Credentials Are Ready!</h3>
+                <p className="text-green-600 font-semibold">Save these credentials to access your dashboard</p>
               </div>
-            </div>
-            <CardTitle className="text-3xl font-bold text-green-700 mb-2">
-              🔐 Your Login Credentials
-            </CardTitle>
-            <p className="text-green-600 font-semibold text-lg">
-              Save these credentials to access your dashboard
-            </p>
-          </CardHeader>
-          <CardContent className="px-8 pb-8">
-            <div className="bg-white rounded-2xl p-8 border-2 border-green-300 shadow-xl">
-              <div className="space-y-8">
+              
+              <div className="space-y-6">
                 {/* Username */}
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200">
                   <div className="flex items-center justify-between">
@@ -226,18 +214,6 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
                 </div>
               </div>
               
-              {/* Copy All Button */}
-              <div className="flex justify-center mt-8">
-                <Button
-                  onClick={copyAllCredentials}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-12 py-4 text-xl font-bold shadow-xl transform hover:scale-105 transition-all duration-200"
-                  size="lg"
-                >
-                  <Copy className="h-6 w-6 mr-4" />
-                  Copy All Credentials
-                </Button>
-              </div>
-              
               {/* Important Notice */}
               <div className="mt-8 p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border-2 border-amber-300 shadow-lg">
                 <div className="flex items-center gap-3 mb-2">
@@ -248,67 +224,22 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
                   These credentials are required to access your school dashboard. Please save them securely before proceeding.
                 </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Action Buttons - Show only after credentials are generated */}
-      {credentialsGenerated && (
-        <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-purple-50">
-          <CardHeader>
-            <CardTitle className="text-center text-2xl">🚀 Access Your Dashboard</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <p className="text-center text-gray-700 text-lg">
-              Use your generated credentials to login and manage your school data.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                onClick={() => window.location.href = '/login'}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 rounded-lg font-semibold shadow-lg flex items-center gap-3 text-lg"
-                size="lg"
-              >
-                Login to Dashboard
-                <ExternalLink className="h-5 w-5" />
-              </Button>
-              
-              <Button 
-                onClick={() => {
-                  if (schoolId && schoolData) {
-                    passDataToScheduler({ ...schoolData, schoolId });
-                  }
-                  window.open('https://chrono-school-scheduler-plus.lovable.app/', '_blank');
-                }}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-lg font-semibold shadow-lg flex items-center gap-3 text-lg"
-                size="lg"
-              >
-                Open Advanced Scheduler
-                <ExternalLink className="h-5 w-5" />
-              </Button>
+              {/* Login Button */}
+              <div className="flex justify-center mt-8">
+                <Button 
+                  onClick={() => window.location.href = '/login'}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-12 py-4 text-xl font-bold shadow-xl transform hover:scale-105 transition-all duration-200"
+                  size="lg"
+                >
+                  Login to Dashboard Now
+                  <ExternalLink className="h-6 w-6 ml-4" />
+                </Button>
+              </div>
             </div>
-
-            <div className="text-center">
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  localStorage.removeItem('schoolId');
-                  localStorage.removeItem('setupSchoolId');
-                  localStorage.removeItem('schedulerData');
-                  localStorage.removeItem('setupComplete');
-                  localStorage.removeItem('schoolInfo');
-                  localStorage.removeItem('adminCredentials');
-                  window.location.reload();
-                }}
-                className="px-6 py-3 rounded-lg font-semibold border-2"
-              >
-                Setup Another School
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Enhanced Setup Data Review */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-gray-50 to-slate-50">
