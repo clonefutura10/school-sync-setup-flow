@@ -69,6 +69,11 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
     window.open('https://chrono-school-scheduler-plus.lovable.app/', '_blank');
   };
 
+  const handleGoToLogin = () => {
+    // Navigate to local login page
+    window.location.href = '/login';
+  };
+
   const handleStartOver = () => {
     localStorage.removeItem('schoolId');
     localStorage.removeItem('setupSchoolId');
@@ -455,18 +460,26 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
       {/* Data Export Section */}
       {schoolId && <DataExport schoolId={schoolId} />}
 
-      {/* Next Steps */}
+      {/* Final Actions */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-purple-50">
         <CardHeader>
-          <CardTitle className="text-center text-xl">Ready for Advanced Scheduling!</CardTitle>
+          <CardTitle className="text-center text-xl">🚀 Ready for Advanced Scheduling!</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-center text-gray-700 text-lg">
-            Your comprehensive school data with enhanced academic details is now ready for the advanced scheduling system. 
-            All configuration data will be automatically loaded and utilized for intelligent timetable generation.
+            Your comprehensive school data is now ready for intelligent timetable generation with AI-powered optimization.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              onClick={handleGoToLogin}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg flex items-center gap-2"
+              size="lg"
+            >
+              Login to Dashboard
+              <ExternalLink className="h-5 w-5" />
+            </Button>
+            
             <Button 
               onClick={handleGoToScheduler}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg flex items-center gap-2"
@@ -488,8 +501,7 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
 
           <div className="text-center">
             <p className="text-sm text-gray-500">
-              💡 <strong>Note:</strong> The scheduler will automatically detect and load your enhanced setup data including 
-              teacher qualifications, subject requirements, class capacities, and academic configuration.
+              💡 <strong>Note:</strong> Use the "Login to Dashboard" to access your local school data, or "Open Advanced Scheduler" for the external scheduling system.
             </p>
           </div>
         </CardContent>
