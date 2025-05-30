@@ -20,14 +20,14 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Get stored school data
-    const schoolData = localStorage.getItem('schedulerData');
-    const schoolInfo = localStorage.getItem('schoolInfo');
+    // Get stored credentials
+    const storedCredentials = localStorage.getItem('adminCredentials');
+    const schoolData = localStorage.getItem('schedulerData') || localStorage.getItem('schoolInfo');
     
-    if (!schoolData && !schoolInfo) {
+    if (!storedCredentials || !schoolData) {
       toast({
         title: "No Setup Data Found",
-        description: "Please complete the school setup first.",
+        description: "Please complete the school setup first to generate login credentials.",
         variant: "destructive",
         className: "fixed top-4 right-4 w-96 border-l-4 border-l-red-500",
       });
@@ -36,34 +36,35 @@ const Login = () => {
       return;
     }
 
-    // Parse school data to generate expected credentials
-    let expectedUsername = '';
     try {
-      const data = JSON.parse(schoolData || schoolInfo || '{}');
-      const schoolName = data.name || 'School';
-      expectedUsername = `admin_${schoolName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+      const credentials = JSON.parse(storedCredentials);
+      
+      // Validate credentials
+      if (username === credentials.username && password === credentials.password) {
+        // Store login session
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', username);
+        
+        toast({
+          title: "Login Successful!",
+          description: "Welcome to the School Management Dashboard",
+          className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+        });
+        
+        // Navigate to dashboard
+        navigate('/dashboard');
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "Invalid username or password. Please check your credentials.",
+          variant: "destructive",
+          className: "fixed top-4 right-4 w-96 border-l-4 border-l-red-500",
+        });
+      }
     } catch (error) {
-      expectedUsername = 'admin_school';
-    }
-
-    // Simple credential validation (in a real app, this would be server-side)
-    if (username === expectedUsername && password.length >= 8) {
-      // Store login session
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('currentUser', username);
-      
       toast({
-        title: "Login Successful!",
-        description: "Welcome to the School Management Dashboard",
-        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-      });
-      
-      // Navigate to dashboard
-      navigate('/dashboard');
-    } else {
-      toast({
-        title: "Login Failed",
-        description: "Invalid username or password. Please check your credentials.",
+        title: "Error",
+        description: "There was an error processing your login.",
         variant: "destructive",
         className: "fixed top-4 right-4 w-96 border-l-4 border-l-red-500",
       });
