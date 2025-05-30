@@ -1,17 +1,64 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, ExternalLink, Download, User, Users, BookOpen, Building, Clock, GraduationCap, Calendar, Award, FlaskConical } from "lucide-react";
+import { CheckCircle, ExternalLink, Download, User, Users, BookOpen, Building, Clock, GraduationCap, Calendar, Award, FlaskConical, Copy, Eye, EyeOff, Key } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 import { DataExport } from '../DataExport';
 import { passDataToScheduler } from '@/utils/schedulerIntegration';
+import { useToast } from "@/hooks/use-toast";
 
 export const SetupComplete: React.FC<BaseStepProps> = ({
   onPrevious,
   schoolId,
   schoolData
 }) => {
+  const { toast } = useToast();
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Generate credentials when component mounts
+  useEffect(() => {
+    const generateCredentials = () => {
+      const schoolName = schoolData.name || 'School';
+      const cleanSchoolName = schoolName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const username = `admin_${cleanSchoolName}`;
+      
+      // Generate a secure random password
+      const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+      let password = '';
+      for (let i = 0; i < 12; i++) {
+        password += charset.charAt(Math.floor(Math.random() * charset.length));
+      }
+      
+      setCredentials({ username, password });
+    };
+
+    generateCredentials();
+  }, [schoolData.name]);
+
+  const copyToClipboard = async (text: string, type: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied!",
+        description: `${type} copied to clipboard`,
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-red-500",
+      });
+    }
+  };
+
+  const copyAllCredentials = async () => {
+    const credentialText = `Username: ${credentials.username}\nPassword: ${credentials.password}`;
+    await copyToClipboard(credentialText, 'Credentials');
+  };
+
   const handleGoToScheduler = () => {
     // Pass comprehensive data to scheduler
     if (schoolId && schoolData) {
@@ -52,6 +99,81 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Generated Login Credentials */}
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-green-50 to-emerald-50">
+        <CardHeader>
+          <CardTitle className="text-center text-xl flex items-center justify-center gap-2">
+            <Key className="h-6 w-6 text-green-600" />
+            Generated Login Credentials
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-white rounded-lg p-6 border border-green-200">
+            <p className="text-center text-gray-700 mb-4">
+              Use these credentials to login to the scheduler application:
+            </p>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Username:</span>
+                  <div className="font-mono text-lg text-gray-800">{credentials.username}</div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(credentials.username, 'Username')}
+                  className="ml-2"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-600">Password:</span>
+                  <div className="font-mono text-lg text-gray-800">
+                    {showPassword ? credentials.password : '••••••••••••'}
+                  </div>
+                </div>
+                <div className="flex gap-2 ml-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(credentials.password, 'Password')}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-center mt-4">
+              <Button
+                onClick={copyAllCredentials}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy All Credentials
+              </Button>
+            </div>
+            
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700 text-center">
+                💡 <strong>Important:</strong> Save these credentials securely. You'll need them to access the scheduler application.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Enhanced Setup Data Review */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-gray-50 to-slate-50">
