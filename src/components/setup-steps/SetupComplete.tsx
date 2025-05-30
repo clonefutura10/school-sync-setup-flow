@@ -117,73 +117,101 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
         </div>
       </div>
 
-      {/* Generated Login Credentials - Now prominently displayed */}
-      <Card className="border-2 border-green-500 shadow-xl bg-gradient-to-r from-green-50 to-emerald-50">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl flex items-center justify-center gap-3 text-green-700">
-            <Key className="h-8 w-8" />
-            Your Login Credentials
+      {/* Login Credentials - Immediately after congratulations */}
+      <Card className="border-4 border-green-500 shadow-2xl bg-gradient-to-br from-green-50 via-emerald-50 to-green-100">
+        <CardHeader className="text-center pb-6">
+          <div className="flex justify-center mb-4">
+            <div className="p-4 bg-green-600 rounded-full shadow-lg">
+              <Key className="h-10 w-10 text-white" />
+            </div>
+          </div>
+          <CardTitle className="text-3xl font-bold text-green-700 mb-2">
+            🔐 Your Login Credentials
           </CardTitle>
-          <p className="text-green-600 font-medium">Save these credentials to access your dashboard</p>
+          <p className="text-green-600 font-semibold text-lg">
+            Save these credentials to access your dashboard
+          </p>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="bg-white rounded-xl p-8 border-2 border-green-200 shadow-lg">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border">
-                <div className="flex-1">
-                  <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Username</span>
-                  <div className="font-mono text-xl text-gray-900 mt-1 font-bold">{credentials.username}</div>
+        <CardContent className="px-8 pb-8">
+          <div className="bg-white rounded-2xl p-8 border-2 border-green-300 shadow-xl">
+            <div className="space-y-8">
+              {/* Username */}
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <User className="h-6 w-6 text-blue-600" />
+                      <span className="text-lg font-bold text-blue-800 uppercase tracking-wide">Username</span>
+                    </div>
+                    <div className="font-mono text-2xl text-gray-900 font-bold bg-white px-4 py-3 rounded-lg border-2 border-blue-300">
+                      {credentials.username || 'Loading...'}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => copyToClipboard(credentials.username, 'Username')}
+                    className="ml-6 border-2 border-blue-300 hover:bg-blue-100"
+                  >
+                    <Copy className="h-5 w-5" />
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(credentials.username, 'Username')}
-                  className="ml-4"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
               </div>
               
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border">
-                <div className="flex-1">
-                  <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Password</span>
-                  <div className="font-mono text-xl text-gray-900 mt-1 font-bold">
-                    {showPassword ? credentials.password : '••••••••••••'}
+              {/* Password */}
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 border-2 border-purple-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Key className="h-6 w-6 text-purple-600" />
+                      <span className="text-lg font-bold text-purple-800 uppercase tracking-wide">Password</span>
+                    </div>
+                    <div className="font-mono text-2xl text-gray-900 font-bold bg-white px-4 py-3 rounded-lg border-2 border-purple-300">
+                      {showPassword ? (credentials.password || 'Loading...') : '••••••••••••'}
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-2 ml-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(credentials.password, 'Password')}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-3 ml-6">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="border-2 border-purple-300 hover:bg-purple-100"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => copyToClipboard(credentials.password, 'Password')}
+                      className="border-2 border-purple-300 hover:bg-purple-100"
+                    >
+                      <Copy className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="flex justify-center mt-6">
+            {/* Copy All Button */}
+            <div className="flex justify-center mt-8">
               <Button
                 onClick={copyAllCredentials}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-12 py-4 text-xl font-bold shadow-xl transform hover:scale-105 transition-all duration-200"
                 size="lg"
               >
-                <Copy className="h-5 w-5 mr-3" />
+                <Copy className="h-6 w-6 mr-4" />
                 Copy All Credentials
               </Button>
             </div>
             
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800 text-center font-medium">
-                🔒 <strong>Important:</strong> These credentials are required to access your school dashboard. Please save them securely.
+            {/* Important Notice */}
+            <div className="mt-8 p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border-2 border-amber-300 shadow-lg">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="text-3xl">🔒</div>
+                <span className="text-xl font-bold text-amber-800">IMPORTANT!</span>
+              </div>
+              <p className="text-amber-800 font-semibold text-lg leading-relaxed">
+                These credentials are required to access your school dashboard. Please save them securely before proceeding.
               </p>
             </div>
           </div>
