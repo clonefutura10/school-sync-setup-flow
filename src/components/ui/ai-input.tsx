@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Sparkles, ChevronDown } from 'lucide-react';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { useGroqSuggestions } from '@/hooks/useGroqSuggestions';
 
 interface AIInputProps {
@@ -12,9 +11,7 @@ interface AIInputProps {
   placeholder?: string;
   suggestionType: 'school_names' | 'subjects' | 'events' | 'room_types' | 'class_names';
   context?: any;
-  fallbackOptions?: string[];
   className?: string;
-  required?: boolean;
 }
 
 export const AIInput: React.FC<AIInputProps> = ({
@@ -23,103 +20,89 @@ export const AIInput: React.FC<AIInputProps> = ({
   placeholder,
   suggestionType,
   context,
-  fallbackOptions = [],
-  className,
-  required
+  className
 }) => {
-  const [open, setOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>(fallbackOptions);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const { loading, getSuggestions } = useGroqSuggestions();
 
-  const loadSuggestions = async () => {
-    if (suggestions.length > 0 && suggestions !== fallbackOptions) return;
-
+  const handleGetSuggestions = async () => {
     let prompt = '';
+    
     switch (suggestionType) {
       case 'school_names':
-        prompt = `Generate 5 professional school name suggestions. Include various types like Public School, High School, Academy, etc.`;
+        prompt = `Generate 5 professional school name suggestions ${context?.location ? `for schools in ${context.location}` : ''}. Include various types like Public School, High School, Academy, etc.`;
         break;
       case 'subjects':
-        prompt = `Generate subject suggestions for ${context?.grade || 'general'} grade. Include core and optional subjects.`;
+        prompt = `Generate subject suggestions for ${context?.grade || 'general'} grade in ${context?.schoolType || 'general'} school. Include core and optional subjects.`;
         break;
       case 'events':
-        prompt = `Generate academic calendar events. Include holidays, exams, activities, etc.`;
+        prompt = `Generate academic calendar events for ${context?.eventType || 'school'} ${context?.month ? `in ${context.month}` : ''}. Include holidays, exams, activities, etc.`;
         break;
       case 'room_types':
-        prompt = `Generate room types for school infrastructure. Include classrooms, labs, facilities, etc.`;
+        prompt = `Generate room types for ${context?.schoolType || 'general'} school infrastructure. Include classrooms, labs, facilities, etc.`;
         break;
       case 'class_names':
-        prompt = `Generate class/section names for ${context?.grade || 'general'} grade. Include section naming conventions.`;
+        prompt = `Generate class/section names for ${context?.grade || 'general'} grade in ${context?.schoolType || 'general'} school. Include section naming conventions.`;
         break;
     }
 
-    const aiSuggestions = await getSuggestions(prompt, context, suggestionType);
-    if (aiSuggestions.length > 0) {
-      setSuggestions(aiSuggestions);
-    } else {
-      setSuggestions(fallbackOptions);
-    }
+    const results = await getSuggestions(prompt, context, suggestionType);
+    setSuggestions(results);
+    setShowSuggestions(true);
   };
 
-  useEffect(() => {
-    if (open) {
-      loadSuggestions();
-    }
-  }, [open]);
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange(suggestion);
+    setShowSuggestions(false);
+  };
 
   return (
     <div className={`relative ${className}`}>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        className="pr-10"
-      />
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleGetSuggestions}
+          disabled={loading}
+          className="shrink-0"
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
       
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-          >
-            {loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-            ) : (
-              <Sparkles className="h-4 w-4 text-blue-600" />
-            )}
-          </Button>
-        </PopoverTrigger>
-        
-        <PopoverContent className="w-80 p-2" align="end">
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-gray-500 mb-2 flex items-center">
-              <Sparkles className="h-3 w-3 mr-1" />
-              AI Suggestions
-            </div>
-            {suggestions.map((suggestion, index) => (
-              <Button
-                key={index}
-                variant="ghost"
-                className="w-full justify-start text-left h-auto p-2 text-sm"
-                onClick={() => {
-                  onChange(suggestion);
-                  setOpen(false);
-                }}
-              >
-                {suggestion}
-              </Button>
-            ))}
-            {suggestions.length === 0 && (
-              <div className="text-xs text-gray-400 p-2">
-                No suggestions available
-              </div>
-            )}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={index}
+              className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none text-sm"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion}
+            </button>
+          ))}
+          <div className="px-3 py-2 border-t bg-gray-50">
+            <button
+              className="text-xs text-gray-500 hover:text-gray-700"
+              onClick={() => setShowSuggestions(false)}
+            >
+              Close suggestions
+            </button>
           </div>
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
     </div>
   );
 };

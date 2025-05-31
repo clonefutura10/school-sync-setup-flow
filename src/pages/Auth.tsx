@@ -20,20 +20,27 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Handle email confirmation redirect
-    const handleAuthCallback = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (data?.session) {
-        toast({
-          title: "Email confirmed!",
-          description: "Your account has been verified successfully.",
-          className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-        });
-        navigate('/setup');
+    // Handle email confirmation from URL hash
+    const handleHashChange = async () => {
+      const hash = window.location.hash;
+      if (hash.includes('access_token')) {
+        // Clear the hash to prevent issues
+        window.history.replaceState(null, '', window.location.pathname);
+        
+        // Get the current session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          toast({
+            title: "Email confirmed!",
+            description: "Your account has been verified successfully.",
+            className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+          });
+          navigate('/setup');
+        }
       }
     };
 
-    handleAuthCallback();
+    handleHashChange();
 
     // Check if user is already logged in
     const checkUser = async () => {
@@ -42,6 +49,7 @@ const Auth = () => {
         navigate('/setup');
       }
     };
+    
     checkUser();
   }, [navigate, toast]);
 
@@ -66,6 +74,9 @@ const Auth = () => {
 
         navigate('/setup');
       } else {
+        // Use the current origin for redirect
+        const redirectUrl = window.location.origin;
+        
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -73,7 +84,7 @@ const Auth = () => {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/auth`
+            emailRedirectTo: redirectUrl
           }
         });
 
@@ -81,7 +92,7 @@ const Auth = () => {
 
         toast({
           title: "Account created!",
-          description: "Please check your email to verify your account.",
+          description: "Please check your email to verify your account. Click the link in the email to complete verification.",
           className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
         });
       }
@@ -197,6 +208,14 @@ const Auth = () => {
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </Button>
           </div>
+
+          {!isLogin && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-xs text-blue-700 text-center">
+                💡 After signing up, check your email and click the verification link to complete registration.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

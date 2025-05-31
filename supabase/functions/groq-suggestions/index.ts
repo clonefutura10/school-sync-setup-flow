@@ -15,10 +15,12 @@ serve(async (req) => {
   try {
     const { prompt, context, type } = await req.json();
     
-    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
+    const GROQ_API_KEY = Deno.env.get('Groq_api');
     if (!GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY is not configured');
+      throw new Error('Groq_api key is not configured');
     }
+
+    console.log('Making request to Groq API for type:', type);
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -31,7 +33,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an AI assistant specialized in school management setup. Generate relevant suggestions for ${type}. Respond with a JSON array of options. Keep suggestions practical and region-appropriate.`
+            content: `You are an AI assistant specialized in school management setup. Generate relevant suggestions for ${type}. Respond with a JSON array of simple string options. Keep suggestions practical and region-appropriate. Return only a JSON array, no other text.`
           },
           {
             role: 'user',
@@ -44,23 +46,31 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Groq API error: ${response.statusText}`);
+      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0]?.message?.content;
     
+    console.log('Groq response:', content);
+    
     // Try to parse as JSON, fallback to text split
     let suggestions;
     try {
       suggestions = JSON.parse(content);
+      if (!Array.isArray(suggestions)) {
+        throw new Error('Not an array');
+      }
     } catch {
       // If not valid JSON, split by lines and clean up
       suggestions = content.split('\n')
         .filter((line: string) => line.trim())
-        .map((line: string) => line.replace(/^[-*•]\s*/, '').trim())
-        .filter((item: string) => item.length > 0);
+        .map((line: string) => line.replace(/^[-*•]\s*/, '').replace(/^\d+\.\s*/, '').trim())
+        .filter((item: string) => item.length > 0 && !item.includes('[') && !item.includes(']'))
+        .slice(0, 8); // Limit to 8 suggestions
     }
+
+    console.log('Final suggestions:', suggestions);
 
     return new Response(
       JSON.stringify({ suggestions }),
@@ -72,7 +82,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        suggestions: [] // Fallback to empty array
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
