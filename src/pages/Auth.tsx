@@ -20,6 +20,21 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Handle email confirmation redirect
+    const handleAuthCallback = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (data?.session) {
+        toast({
+          title: "Email confirmed!",
+          description: "Your account has been verified successfully.",
+          className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+        });
+        navigate('/setup');
+      }
+    };
+
+    handleAuthCallback();
+
     // Check if user is already logged in
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -28,7 +43,7 @@ const Auth = () => {
       }
     };
     checkUser();
-  }, [navigate]);
+  }, [navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +73,7 @@ const Auth = () => {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/setup`
+            emailRedirectTo: `${window.location.origin}/auth`
           }
         });
 
