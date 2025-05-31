@@ -64,12 +64,12 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   };
 
   const generateEventDescription = async (eventName: string, eventType: string) => {
-    if (!eventName) return;
+    if (!eventName.trim()) return;
     
     try {
       const prompt = `Generate a brief, professional description for this academic event: "${eventName}" of type "${eventType}". Keep it under 50 words and make it relevant for a school calendar.`;
       const suggestions = await getSuggestions(prompt, { eventName, eventType }, 'event_description');
-      if (suggestions.length > 0) {
+      if (suggestions.length > 0 && typeof suggestions[0] === 'string') {
         setNewEvent(prev => ({ ...prev, description: suggestions[0] }));
       }
     } catch (error) {
@@ -78,16 +78,41 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   };
 
   const addEvent = () => {
-    if (!newEvent.event_name.trim() || !newEvent.start_date || !newEvent.end_date) {
+    // Validate required fields
+    const errors = [];
+    if (!newEvent.event_name.trim()) errors.push('Event name is required');
+    if (!newEvent.start_date) errors.push('Start date is required');
+    if (!newEvent.end_date) errors.push('End date is required');
+    
+    if (errors.length > 0) {
       toast({
-        title: "Error",
-        description: "Please fill in event name, start date, and end date",
+        title: "❌ Validation Error",
+        description: errors.join(', '),
         variant: "destructive",
       });
       return;
     }
 
-    setEvents([...events, { ...newEvent, id: Date.now().toString() }]);
+    // Validate date logic
+    if (new Date(newEvent.start_date) > new Date(newEvent.end_date)) {
+      toast({
+        title: "❌ Date Error",
+        description: "Start date must be before end date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const eventToAdd = {
+      ...newEvent,
+      id: Date.now().toString(),
+      event_name: newEvent.event_name.trim(),
+      description: newEvent.description.trim() || `${newEvent.event_name} - ${newEvent.event_type}`
+    };
+
+    setEvents([...events, eventToAdd]);
+    
+    // Reset form
     setNewEvent({
       event_name: '',
       event_type: 'holiday',
@@ -95,44 +120,85 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
       end_date: '',
       description: '',
     });
+
+    toast({
+      title: "✅ Event Added",
+      description: `${eventToAdd.event_name} has been added to the calendar`,
+      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+    });
   };
 
   const removeEvent = (index: number) => {
+    const eventName = events[index]?.event_name || 'Event';
     setEvents(events.filter((_, i) => i !== index));
+    toast({
+      title: "🗑️ Event Removed",
+      description: `${eventName} has been removed from the calendar`,
+    });
   };
 
   const handleAutoFill = async () => {
     try {
-      const prompt = `Generate 8-10 common academic calendar events for a school year including holidays, exams, cultural events, sports day etc. Format as JSON array with fields: event_name, event_type (holiday/exam/event/break), description`;
-      const suggestions = await getSuggestions(prompt, {}, 'events');
+      const prompt = `Generate 8-10 common academic calendar events for a school year. Include holidays (like Diwali, Christmas), exams (like Mid-term, Final exams), cultural events (like Sports Day, Annual Function), and breaks. Return as simple array of event names only.`;
+      const suggestions = await getSuggestions(prompt, { schoolType: schoolData.schoolType }, 'events');
       
       if (suggestions.length > 0) {
-        const generatedEvents = suggestions.map((eventName: string, index: number) => ({
-          id: `generated-${index}`,
-          event_name: eventName,
-          event_type: 'event' as const,
-          start_date: '',
-          end_date: '',
-          description: `School ${eventName} - please set dates`,
-        }));
+        const generatedEvents = suggestions.slice(0, 8).map((eventName: string, index: number) => {
+          const eventTypes = ['holiday', 'exam', 'event', 'break'];
+          const randomType = eventTypes[index % eventTypes.length];
+          
+          return {
+            id: `generated-${Date.now()}-${index}`,
+            event_name: typeof eventName === 'string' ? eventName : `Event ${index + 1}`,
+            event_type: randomType,
+            start_date: '',
+            end_date: '',
+            description: `School ${typeof eventName === 'string' ? eventName : `Event ${index + 1}`} - please set dates`,
+          };
+        });
+        
         setEvents([...events, ...generatedEvents]);
         
         toast({
-          title: "✨ Auto-filled successfully!",
-          description: `Added ${suggestions.length} AI-generated events. Please set the dates.`,
+          title: "✨ AI Auto-filled successfully!",
+          description: `Added ${generatedEvents.length} AI-generated events. Please set the dates.`,
           className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
         });
       }
     } catch (error) {
-      console.log('Auto-fill failed:', error);
+      console.log('Auto-fill failed, using fallback:', error);
+      // Fallback events
+      const fallbackEvents = [
+        { event_name: "Summer Break", event_type: "break", description: "Annual summer vacation" },
+        { event_name: "Mid-term Exams", event_type: "exam", description: "Half-yearly examinations" },
+        { event_name: "Sports Day", event_type: "event", description: "Annual sports competition" },
+        { event_name: "Diwali Holiday", event_type: "holiday", description: "Festival of lights celebration" }
+      ];
+      
+      const generatedEvents = fallbackEvents.map((event, index) => ({
+        id: `fallback-${Date.now()}-${index}`,
+        event_name: event.event_name,
+        event_type: event.event_type as 'holiday' | 'exam' | 'event' | 'break',
+        start_date: '',
+        end_date: '',
+        description: event.description,
+      }));
+      
+      setEvents([...events, ...generatedEvents]);
+      
+      toast({
+        title: "✨ Auto-filled successfully!",
+        description: `Added ${generatedEvents.length} events. Please set the dates.`,
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+      });
     }
   };
 
   const saveAcademicCalendar = async () => {
     if (!schoolId) {
       toast({
-        title: "Error",
-        description: "School ID is required",
+        title: "❌ Missing Information",
+        description: "School ID is required. Please complete the school information step first.",
         variant: "destructive",
       });
       return;
@@ -141,7 +207,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
     try {
       // Prepare all events including term breaks
       const allEvents = [
-        ...events,
+        ...events.filter(event => event.start_date && event.end_date),
         ...termBreaks
           .filter(term => term.start_date && term.end_date)
           .map(term => ({
@@ -154,15 +220,28 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
           }))
       ];
 
+      // Delete existing calendar events for this school
+      const { error: deleteError } = await (supabase as any)
+        .from('academic_calendar')
+        .delete()
+        .eq('school_id', schoolId);
+
+      if (deleteError) {
+        console.log('Delete error (may be expected):', deleteError);
+      }
+
       if (allEvents.length > 0) {
         const { error } = await (supabase as any)
           .from('academic_calendar')
-          .upsert(allEvents.map(event => ({
+          .insert(allEvents.map(event => ({
             ...event,
             school_id: schoolId,
           })));
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw new Error(`Failed to save calendar: ${error.message}`);
+        }
       }
 
       const calendarData = {
@@ -173,17 +252,20 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
       };
 
       onStepComplete(calendarData);
+      
       toast({
-        title: "Success",
-        description: "Academic calendar configured successfully!",
+        title: "✅ Success!",
+        description: `Academic calendar configured with ${allEvents.length} events!`,
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
+      
       onNext();
 
     } catch (error) {
       console.error('Error saving academic calendar:', error);
       toast({
-        title: "Error",
-        description: "Failed to save academic calendar",
+        title: "❌ Save Failed",
+        description: error instanceof Error ? error.message : "Failed to save academic calendar. Please try again.",
         variant: "destructive",
       });
     }
@@ -191,10 +273,21 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
 
   return (
     <div className="space-y-8">
-      <div className="text-center space-y-2">
-        <CalendarDays className="h-12 w-12 text-blue-600 mx-auto" />
-        <h2 className="text-2xl font-bold text-gray-800">Academic Calendar Setup</h2>
-        <p className="text-gray-600">Configure your school's academic year, terms, and important events</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <CalendarDays className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800">Academic Calendar Setup</h2>
+          <p className="text-gray-600">Configure your school's academic year, terms, and important events</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleAutoFill}
+          className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 border-indigo-200"
+        >
+          <Wand2 className="h-4 w-4 text-indigo-600" />
+          AI Auto Fill Events
+        </Button>
       </div>
 
       {/* Academic Year */}
@@ -275,31 +368,20 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
       {/* Add New Event */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-green-600" />
-              Add Academic Events
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleAutoFill}
-              className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 border-indigo-200"
-            >
-              <Wand2 className="h-4 w-4 text-indigo-600" />
-              AI Autofill Events
-            </Button>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-green-600" />
+            Add Academic Events
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label>Event Name</Label>
+              <Label>Event Name *</Label>
               <AIInput
                 value={newEvent.event_name}
                 onChange={(value) => {
                   setNewEvent(prev => ({ ...prev, event_name: value }));
-                  if (value) {
+                  if (value.trim()) {
                     generateEventDescription(value, newEvent.event_type);
                   }
                 }}
@@ -309,11 +391,17 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
               />
             </div>
             <div>
-              <Label>Event Type</Label>
+              <Label>Event Type *</Label>
               <select
                 className="w-full p-2 border rounded-md"
                 value={newEvent.event_type}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, event_type: e.target.value as any }))}
+                onChange={(e) => {
+                  const newType = e.target.value as 'holiday' | 'exam' | 'event' | 'break';
+                  setNewEvent(prev => ({ ...prev, event_type: newType }));
+                  if (newEvent.event_name.trim()) {
+                    generateEventDescription(newEvent.event_name, newType);
+                  }
+                }}
               >
                 <option value="holiday">Holiday</option>
                 <option value="exam">Exam</option>
@@ -322,7 +410,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
               </select>
             </div>
             <div>
-              <Label>Start Date</Label>
+              <Label>Start Date *</Label>
               <Input
                 type="date"
                 value={newEvent.start_date}
@@ -330,7 +418,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
               />
             </div>
             <div>
-              <Label>End Date</Label>
+              <Label>End Date *</Label>
               <Input
                 type="date"
                 value={newEvent.end_date}
@@ -363,18 +451,18 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
           <CardContent>
             <div className="space-y-3">
               {events.map((event, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                <div key={event.id || index} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <Badge className={eventTypeColors[event.event_type]}>
                       {event.event_type}
                     </Badge>
                     <div>
-                      <h4 className="font-semibold">{event.event_name}</h4>
+                      <h4 className="font-semibold">{String(event.event_name)}</h4>
                       <p className="text-sm text-gray-600">
-                        {event.start_date} to {event.end_date}
+                        {event.start_date || 'No start date'} to {event.end_date || 'No end date'}
                       </p>
                       {event.description && (
-                        <p className="text-xs text-gray-500">{event.description}</p>
+                        <p className="text-xs text-gray-500">{String(event.description)}</p>
                       )}
                     </div>
                   </div>
