@@ -32,7 +32,8 @@ export const useSetupProgress = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // Use type assertion since setup_progress table exists but not in generated types
+      const { data, error } = await (supabase as any)
         .from('setup_progress')
         .select('*')
         .eq('user_id', user.id)
@@ -64,7 +65,8 @@ export const useSetupProgress = () => {
     const newProgress = { ...progress, ...updatedProgress };
     
     try {
-      const { error } = await supabase
+      // Use type assertion since setup_progress table exists but not in generated types
+      const { error } = await (supabase as any)
         .from('setup_progress')
         .upsert({
           user_id: user.id,

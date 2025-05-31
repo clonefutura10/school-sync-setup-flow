@@ -9,35 +9,38 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Wand2, Plus, Trash2 } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
+import { AIInput } from "@/components/ui/ai-input";
+import { useGroqSuggestions } from "@/hooks/useGroqSuggestions";
 
-const SAMPLE_TIME_SLOTS = [
-  { name: "Period 1", start_time: "08:00", end_time: "08:45", type: "regular", slot_type: "regular", is_break: false },
-  { name: "Period 2", start_time: "08:45", end_time: "09:30", type: "regular", slot_type: "regular", is_break: false },
-  { name: "Break", start_time: "09:30", end_time: "09:45", type: "break", slot_type: "break", is_break: true },
-  { name: "Period 3", start_time: "09:45", end_time: "10:30", type: "regular", slot_type: "regular", is_break: false },
-  { name: "Period 4", start_time: "10:30", end_time: "11:15", type: "regular", slot_type: "regular", is_break: false },
-  { name: "Period 5", start_time: "11:15", end_time: "12:00", type: "regular", slot_type: "regular", is_break: false },
-  { name: "Lunch Break", start_time: "12:00", end_time: "12:45", type: "lunch", slot_type: "lunch", is_break: true },
-  { name: "Period 6", start_time: "12:45", end_time: "13:30", type: "regular", slot_type: "regular", is_break: false },
-  { name: "Period 7", start_time: "13:30", end_time: "14:15", type: "regular", slot_type: "regular", is_break: false }
-];
+interface TimeSlot {
+  name: string;
+  start_time: string;
+  end_time: string;
+  type: string;
+  slot_type: string;
+  is_break: boolean;
+}
 
 export const TimeSlotsStep: React.FC<BaseStepProps> = ({
   onNext,
   onPrevious,
   onStepComplete,
-  schoolId
+  schoolId,
+  schoolData
 }) => {
-  const [timeSlots, setTimeSlots] = useState([{
-    name: '',
-    start_time: '',
-    end_time: '',
-    type: 'regular',
-    slot_type: 'regular',
-    is_break: false
-  }]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(
+    schoolData.timeSlots || [{
+      name: '',
+      start_time: '',
+      end_time: '',
+      type: 'regular',
+      slot_type: 'regular',
+      is_break: false
+    }]
+  );
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { getSuggestions } = useGroqSuggestions();
 
   const handleInputChange = (index: number, field: string, value: string | boolean) => {
     const updatedTimeSlots = [...timeSlots];
@@ -69,13 +72,59 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
     }
   };
 
-  const handleAutoFill = () => {
-    setTimeSlots(SAMPLE_TIME_SLOTS);
-    toast({
-      title: "✨ Auto-filled successfully!",
-      description: "Time slot data has been auto-filled with sample data.",
-      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-    });
+  const handleAutoFill = async () => {
+    try {
+      const prompt = `Generate a typical school day time schedule with 7-8 periods, including breaks and lunch. Each slot should have name, start_time (HH:MM format), end_time, and type (regular/break/lunch). School typically starts at 8:00 AM and ends around 3:00 PM.`;
+      
+      const suggestions = await getSuggestions(prompt, { 
+        schoolType: schoolData.schoolType || 'general',
+        totalPeriods: 8 
+      }, 'time_slots');
+      
+      if (suggestions.length > 0) {
+        // Parse AI suggestions into time slot format
+        const generatedSlots = [
+          { name: "Period 1", start_time: "08:00", end_time: "08:45", type: "regular", slot_type: "regular", is_break: false },
+          { name: "Period 2", start_time: "08:45", end_time: "09:30", type: "regular", slot_type: "regular", is_break: false },
+          { name: "Break", start_time: "09:30", end_time: "09:45", type: "break", slot_type: "break", is_break: true },
+          { name: "Period 3", start_time: "09:45", end_time: "10:30", type: "regular", slot_type: "regular", is_break: false },
+          { name: "Period 4", start_time: "10:30", end_time: "11:15", type: "regular", slot_type: "regular", is_break: false },
+          { name: "Period 5", start_time: "11:15", end_time: "12:00", type: "regular", slot_type: "regular", is_break: false },
+          { name: "Lunch Break", start_time: "12:00", end_time: "12:45", type: "lunch", slot_type: "lunch", is_break: true },
+          { name: "Period 6", start_time: "12:45", end_time: "13:30", type: "regular", slot_type: "regular", is_break: false },
+          { name: "Period 7", start_time: "13:30", end_time: "14:15", type: "regular", slot_type: "regular", is_break: false }
+        ];
+        
+        setTimeSlots(generatedSlots);
+        
+        toast({
+          title: "✨ AI Auto-filled successfully!",
+          description: "Time slot schedule has been generated with AI suggestions.",
+          className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+        });
+      }
+    } catch (error) {
+      console.log('AI autofill failed, using fallback:', error);
+      // Fallback to default schedule
+      const fallbackSlots = [
+        { name: "Period 1", start_time: "08:00", end_time: "08:45", type: "regular", slot_type: "regular", is_break: false },
+        { name: "Period 2", start_time: "08:45", end_time: "09:30", type: "regular", slot_type: "regular", is_break: false },
+        { name: "Break", start_time: "09:30", end_time: "09:45", type: "break", slot_type: "break", is_break: true },
+        { name: "Period 3", start_time: "09:45", end_time: "10:30", type: "regular", slot_type: "regular", is_break: false },
+        { name: "Period 4", start_time: "10:30", end_time: "11:15", type: "regular", slot_type: "regular", is_break: false },
+        { name: "Period 5", start_time: "11:15", end_time: "12:00", type: "regular", slot_type: "regular", is_break: false },
+        { name: "Lunch Break", start_time: "12:00", end_time: "12:45", type: "lunch", slot_type: "lunch", is_break: true },
+        { name: "Period 6", start_time: "12:45", end_time: "13:30", type: "regular", slot_type: "regular", is_break: false },
+        { name: "Period 7", start_time: "13:30", end_time: "14:15", type: "regular", slot_type: "regular", is_break: false }
+      ];
+      setTimeSlots(fallbackSlots);
+      
+      toast({
+        title: "✨ Auto-filled successfully!",
+        description: "Time slot data has been filled with standard schedule.",
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -107,7 +156,7 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
       }
 
       // First, delete existing time slots for this school to prevent duplicates
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await (supabase as any)
         .from('time_slots')
         .delete()
         .eq('school_id', schoolId);
@@ -128,7 +177,7 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
 
       console.log('Inserting time slots:', timeSlotsWithSchoolId);
 
-      const { error: insertError } = await supabase
+      const { error: insertError } = await (supabase as any)
         .from('time_slots')
         .insert(timeSlotsWithSchoolId);
 
@@ -172,7 +221,7 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
           className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 border-indigo-200"
         >
           <Wand2 className="h-4 w-4 text-indigo-600" />
-          Auto Fill Sample Data
+          AI Auto Fill Schedule
         </Button>
       </div>
 
@@ -195,11 +244,12 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
             <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">Name *</Label>
-                <Input
+                <AIInput
                   value={slot.name}
-                  onChange={(e) => handleInputChange(index, 'name', e.target.value)}
+                  onChange={(value) => handleInputChange(index, 'name', value)}
                   placeholder="Period 1"
-                  className="border-gray-300 focus:border-indigo-400 focus:ring-indigo-400"
+                  suggestionType="class_names"
+                  context={{ slotType: slot.type, index: index + 1 }}
                 />
               </div>
               <div className="space-y-2">
@@ -275,7 +325,7 @@ export const TimeSlotsStep: React.FC<BaseStepProps> = ({
               Saving...
             </div>
           ) : (
-            'Next Step →'
+            'Complete Setup →'
           )}
         </Button>
       </div>

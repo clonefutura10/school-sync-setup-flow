@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Plus, Trash2, CalendarDays, Clock, GraduationCap } from "lucide-react";
+import { Calendar, Plus, Trash2, CalendarDays, GraduationCap, Wand2 } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AIInput } from "@/components/ui/ai-input";
+import { useGroqSuggestions } from "@/hooks/useGroqSuggestions";
 
 interface AcademicEvent {
   id?: string;
@@ -28,6 +30,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   schoolData
 }) => {
   const { toast } = useToast();
+  const { getSuggestions } = useGroqSuggestions();
   
   // Initialize with existing data or defaults
   const [academicYear, setAcademicYear] = useState({
@@ -40,10 +43,6 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
     { name: 'Term 2', start_date: '', end_date: '' },
     { name: 'Term 3', start_date: '', end_date: '' },
   ]);
-
-  const [weeklyOffs, setWeeklyOffs] = useState<string[]>(
-    schoolData.weekly_offs || ['Sunday']
-  );
 
   const [events, setEvents] = useState<AcademicEvent[]>(
     schoolData.academicCalendar || []
@@ -64,13 +63,25 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
     break: 'bg-yellow-100 text-yellow-800',
   };
 
-  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const generateEventDescription = async (eventName: string, eventType: string) => {
+    if (!eventName) return;
+    
+    try {
+      const prompt = `Generate a brief, professional description for this academic event: "${eventName}" of type "${eventType}". Keep it under 50 words and make it relevant for a school calendar.`;
+      const suggestions = await getSuggestions(prompt, { eventName, eventType }, 'event_description');
+      if (suggestions.length > 0) {
+        setNewEvent(prev => ({ ...prev, description: suggestions[0] }));
+      }
+    } catch (error) {
+      console.log('Failed to generate description:', error);
+    }
+  };
 
   const addEvent = () => {
-    if (!newEvent.event_name || !newEvent.start_date || !newEvent.end_date) {
+    if (!newEvent.event_name.trim() || !newEvent.start_date || !newEvent.end_date) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in event name, start date, and end date",
         variant: "destructive",
       });
       return;
@@ -90,12 +101,31 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
     setEvents(events.filter((_, i) => i !== index));
   };
 
-  const toggleWeeklyOff = (day: string) => {
-    setWeeklyOffs(prev => 
-      prev.includes(day) 
-        ? prev.filter(d => d !== day)
-        : [...prev, day]
-    );
+  const handleAutoFill = async () => {
+    try {
+      const prompt = `Generate 8-10 common academic calendar events for a school year including holidays, exams, cultural events, sports day etc. Format as JSON array with fields: event_name, event_type (holiday/exam/event/break), description`;
+      const suggestions = await getSuggestions(prompt, {}, 'events');
+      
+      if (suggestions.length > 0) {
+        const generatedEvents = suggestions.map((eventName: string, index: number) => ({
+          id: `generated-${index}`,
+          event_name: eventName,
+          event_type: 'event' as const,
+          start_date: '',
+          end_date: '',
+          description: `School ${eventName} - please set dates`,
+        }));
+        setEvents([...events, ...generatedEvents]);
+        
+        toast({
+          title: "✨ Auto-filled successfully!",
+          description: `Added ${suggestions.length} AI-generated events. Please set the dates.`,
+          className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+        });
+      }
+    } catch (error) {
+      console.log('Auto-fill failed:', error);
+    }
   };
 
   const saveAcademicCalendar = async () => {
@@ -125,7 +155,6 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
       ];
 
       if (allEvents.length > 0) {
-        // Use type assertion since types haven't been updated yet
         const { error } = await (supabase as any)
           .from('academic_calendar')
           .upsert(allEvents.map(event => ({
@@ -141,7 +170,6 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
         academic_year_start: academicYear.start_date,
         academic_year_end: academicYear.end_date,
         term_breaks: termBreaks,
-        weekly_offs: weeklyOffs,
       };
 
       onStepComplete(calendarData);
@@ -203,7 +231,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-purple-600" />
+            <Calendar className="h-5 w-5 text-purple-600" />
             Term Break Configuration
           </CardTitle>
         </CardHeader>
@@ -213,49 +241,32 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
               <div key={index} className="space-y-3 p-4 border rounded-lg">
                 <h4 className="font-semibold text-gray-700">{term.name}</h4>
                 <div className="space-y-2">
-                  <Input
-                    placeholder="Start Date"
-                    type="date"
-                    value={term.start_date}
-                    onChange={(e) => {
-                      const updated = [...termBreaks];
-                      updated[index].start_date = e.target.value;
-                      setTermBreaks(updated);
-                    }}
-                  />
-                  <Input
-                    placeholder="End Date"
-                    type="date"
-                    value={term.end_date}
-                    onChange={(e) => {
-                      const updated = [...termBreaks];
-                      updated[index].end_date = e.target.value;
-                      setTermBreaks(updated);
-                    }}
-                  />
+                  <div>
+                    <Label className="text-sm text-gray-600">Start</Label>
+                    <Input
+                      type="date"
+                      value={term.start_date}
+                      onChange={(e) => {
+                        const updated = [...termBreaks];
+                        updated[index].start_date = e.target.value;
+                        setTermBreaks(updated);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-gray-600">End</Label>
+                    <Input
+                      type="date"
+                      value={term.end_date}
+                      onChange={(e) => {
+                        const updated = [...termBreaks];
+                        updated[index].end_date = e.target.value;
+                        setTermBreaks(updated);
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Weekly Offs */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly Off Days</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {weekDays.map(day => (
-              <Button
-                key={day}
-                variant={weeklyOffs.includes(day) ? "default" : "outline"}
-                size="sm"
-                onClick={() => toggleWeeklyOff(day)}
-              >
-                {day}
-              </Button>
             ))}
           </div>
         </CardContent>
@@ -264,19 +275,37 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
       {/* Add New Event */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-green-600" />
-            Add Academic Events
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-green-600" />
+              Add Academic Events
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAutoFill}
+              className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 border-indigo-200"
+            >
+              <Wand2 className="h-4 w-4 text-indigo-600" />
+              AI Autofill Events
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label>Event Name</Label>
-              <Input
+              <AIInput
                 value={newEvent.event_name}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, event_name: e.target.value }))}
+                onChange={(value) => {
+                  setNewEvent(prev => ({ ...prev, event_name: value }));
+                  if (value) {
+                    generateEventDescription(value, newEvent.event_type);
+                  }
+                }}
                 placeholder="e.g., Sports Day"
+                suggestionType="events"
+                context={{ eventType: newEvent.event_type }}
               />
             </div>
             <div>
@@ -310,11 +339,12 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
             </div>
           </div>
           <div>
-            <Label>Description</Label>
+            <Label>Description (AI Generated)</Label>
             <Textarea
               value={newEvent.description}
               onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Optional event description"
+              placeholder="AI will generate this when you enter event name"
+              className="bg-blue-50"
             />
           </div>
           <Button onClick={addEvent} className="w-full">
@@ -328,7 +358,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
       {events.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Configured Events</CardTitle>
+            <CardTitle>Configured Events ({events.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
