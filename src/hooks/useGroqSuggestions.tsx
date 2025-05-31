@@ -55,6 +55,26 @@ export const useGroqSuggestions = () => {
     return getSuggestions(prompt, { grade, schoolType }, 'class_names');
   };
 
+  const getAcademicEventSuggestions = async (eventType?: string) => {
+    const prompt = `Generate academic calendar events for ${eventType || 'school'}. Include holidays, exams, activities, etc.`;
+    return getSuggestions(prompt, { eventType }, 'academic_events');
+  };
+
+  const getStudentDataSuggestions = async (field?: string) => {
+    const prompt = `Generate student data suggestions for ${field || 'general'} field.`;
+    return getSuggestions(prompt, { field }, 'student_data');
+  };
+
+  const getTeacherDataSuggestions = async (field?: string) => {
+    const prompt = `Generate teacher data suggestions for ${field || 'general'} field.`;
+    return getSuggestions(prompt, { field }, 'teacher_data');
+  };
+
+  const getClassOrganizationSuggestions = async (field?: string) => {
+    const prompt = `Generate class organization suggestions for ${field || 'general'} field.`;
+    return getSuggestions(prompt, { field }, 'class_organization');
+  };
+
   return {
     loading,
     getSuggestions,
@@ -63,5 +83,9 @@ export const useGroqSuggestions = () => {
     getEventSuggestions,
     getRoomTypeSuggestions,
     getClassNameSuggestions,
+    getAcademicEventSuggestions,
+    getStudentDataSuggestions,
+    getTeacherDataSuggestions,
+    getClassOrganizationSuggestions,
   };
 };
