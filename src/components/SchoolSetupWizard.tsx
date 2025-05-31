@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from './AuthProvider';
+import { useSetupProgress } from '@/hooks/useSetupProgress';
 import { SchoolInfoStep } from './setup-steps/SchoolInfoStep';
 import { StudentsStep } from './setup-steps/StudentsStep';
 import { TeachersStep } from './setup-steps/TeachersStep';
@@ -15,6 +18,7 @@ import { InfrastructureStep } from './setup-steps/InfrastructureStep';
 import { TeacherSubjectMappingStep } from './setup-steps/TeacherSubjectMappingStep';
 import { EnhancedSetupComplete } from './EnhancedSetupComplete';
 import { BaseStepProps } from '@/types/setup';
+import { LogOut } from 'lucide-react';
 import { 
   GraduationCap, 
   Users, 
@@ -42,42 +46,57 @@ const STEPS = [
 ];
 
 export const SchoolSetupWizard = () => {
-  const [currentStep, setCurrentStep] = useState(1);
+  const { user, signOut } = useAuthContext();
+  const { progress, loading: progressLoading, saveProgress } = useSetupProgress();
   const [schoolData, setSchoolData] = useState({});
-  const [schoolId, setSchoolId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const progress = ((currentStep - 1) / (STEPS.length - 1)) * 100;
+  const currentStep = progress.currentStep;
+  const schoolId = progress.schoolId;
+  const progressPercent = ((currentStep - 1) / (STEPS.length - 1)) * 100;
+
+  useEffect(() => {
+    // Load existing school data from progress
+    if (progress.stepData) {
+      setSchoolData(progress.stepData);
+    }
+  }, [progress]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length) {
-      setCurrentStep(currentStep + 1);
+      const newStep = currentStep + 1;
+      saveProgress({ 
+        currentStep: newStep,
+        completedSteps: [...progress.completedSteps, currentStep]
+      });
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      saveProgress({ currentStep: currentStep - 1 });
     }
   };
 
-  const handleStepComplete = (stepData: any) => {
+  const handleStepComplete = async (stepData: any) => {
     // Accumulate all setup data
     const updatedSchoolData = { ...schoolData, ...stepData };
     setSchoolData(updatedSchoolData);
-    console.log('Step completed with data:', stepData);
-    console.log('Complete school data so far:', updatedSchoolData);
     
     // Handle school creation if it's the first step and contains school ID
-    if (stepData.schoolId) {
-      setSchoolId(stepData.schoolId);
-      localStorage.setItem('schoolId', stepData.schoolId);
+    let newSchoolId = schoolId;
+    if (stepData.schoolId && !schoolId) {
+      newSchoolId = stepData.schoolId;
     }
     
-    // Store the complete setup data for the scheduler at each step
-    localStorage.setItem('setupData', JSON.stringify(updatedSchoolData));
-    
-    // Store individual step data
+    // Save progress with updated data
+    await saveProgress({
+      stepData: updatedSchoolData,
+      schoolId: newSchoolId,
+      completedSteps: [...progress.completedSteps, currentStep]
+    });
+
+    // Store individual step data in localStorage for backward compatibility
     if (stepData.students) {
       localStorage.setItem('schoolStudents', JSON.stringify(stepData.students));
     }
@@ -104,24 +123,33 @@ export const SchoolSetupWizard = () => {
     }
   };
 
-  useEffect(() => {
-    // Check if we have a school ID in localStorage
-    const savedSchoolId = localStorage.getItem('schoolId');
-    if (savedSchoolId) {
-      setSchoolId(savedSchoolId);
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully.",
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
+  };
 
-    // Load existing setup data if available
-    const savedSetupData = localStorage.getItem('setupData');
-    if (savedSetupData) {
-      try {
-        const parsedData = JSON.parse(savedSetupData);
-        setSchoolData(parsedData);
-      } catch (error) {
-        console.error('Error parsing setup data:', error);
-      }
-    }
-  }, []);
+  if (progressLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your progress...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderCurrentStep = () => {
     const CurrentStepComponent = STEPS[currentStep - 1].component;
@@ -142,9 +170,8 @@ export const SchoolSetupWizard = () => {
   const renderStepIndicator = () => {
     // Calculate visible range of steps to show (for responsive design)
     let visibleSteps = STEPS;
-    const maxVisibleSteps = 5; // Maximum number of steps to show on smaller screens
+    const maxVisibleSteps = 5;
     
-    // Create a mobile-friendly subset of steps centered around the current step
     if (window.innerWidth < 1024 && STEPS.length > maxVisibleSteps) {
       const startIdx = Math.max(0, Math.min(
         currentStep - Math.ceil(maxVisibleSteps / 2),
@@ -200,10 +227,24 @@ export const SchoolSetupWizard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">School Setup Wizard</h1>
-          <p className="text-lg text-gray-600">Complete 10-step setup for comprehensive school management</p>
+        {/* Header with sign out */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">School Setup Wizard</h1>
+            <p className="text-lg text-gray-600">Complete 10-step setup for comprehensive school management</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">Welcome, {user?.email}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="flex items-center space-x-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </Button>
+          </div>
         </div>
 
         {/* Step Indicator */}
@@ -223,10 +264,10 @@ export const SchoolSetupWizard = () => {
               </div>
               <div className="text-right">
                 <div className="text-sm text-gray-500 mb-1">Progress</div>
-                <div className="text-2xl font-bold text-blue-600">{Math.round(progress)}%</div>
+                <div className="text-2xl font-bold text-blue-600">{Math.round(progressPercent)}%</div>
               </div>
             </div>
-            <Progress value={progress} className="mt-4 h-2" />
+            <Progress value={progressPercent} className="mt-4 h-2" />
           </CardHeader>
         </Card>
 
