@@ -74,8 +74,8 @@ const Auth = () => {
 
         navigate('/setup');
       } else {
-        // Use the current origin for redirect
-        const redirectUrl = window.location.origin;
+        // Get the current origin and use it for redirect
+        const currentOrigin = window.location.origin;
         
         const { error } = await supabase.auth.signUp({
           email,
@@ -84,7 +84,7 @@ const Auth = () => {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: redirectUrl
+            emailRedirectTo: `${currentOrigin}/auth`
           }
         });
 
