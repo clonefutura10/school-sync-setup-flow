@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +74,8 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   };
 
   const handleSubmit = async () => {
+    if (loading) return; // Prevent multiple submissions
+    
     if (!schoolData.name.trim()) {
       toast({
         title: "❌ Validation Error",
@@ -116,7 +117,11 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
       });
 
       console.log('Calling onNext to move to step 2');
-      onNext();
+      
+      // Add a small delay to ensure state is updated
+      setTimeout(() => {
+        onNext();
+      }, 100);
       
     } catch (error) {
       console.error('Error:', error);
@@ -125,7 +130,6 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
