@@ -23,15 +23,39 @@ export const useSetupProgress = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      loadProgress();
-    }
+    const loadProgressWithTimeout = async () => {
+      // Set a timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        console.log('Progress loading timed out, using defaults');
+        setLoading(false);
+      }, 3000);
+
+      try {
+        if (user) {
+          await loadProgress();
+        } else {
+          // If no user, just stop loading and use defaults
+          setLoading(false);
+        }
+      } catch (error) {
+        console.log('Error in progress loading effect:', error);
+        setLoading(false);
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    loadProgressWithTimeout();
   }, [user]);
 
   const loadProgress = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
+      console.log('Loading progress for user:', user.id);
       const { data, error } = await supabase
         .from('setup_progress')
         .select('*')
