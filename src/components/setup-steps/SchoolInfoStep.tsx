@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,7 +120,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
       console.log('User signed up successfully:', authData.user.id);
 
-      // Step 2: Create school record
+      // Step 2: Create school record - removed created_by field
       const schoolInsertData = {
         name: schoolData.name.trim(),
         address: schoolData.address.trim() || null,
@@ -135,8 +134,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         school_type: schoolData.school_type,
         academic_year_start: schoolData.academic_year_start || null,
         academic_year_end: schoolData.academic_year_end || null,
-        timezone: schoolData.timezone,
-        created_by: authData.user.id
+        timezone: schoolData.timezone
       };
 
       console.log('Creating school record:', schoolInsertData);
