@@ -1,400 +1,281 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Plus, Trash2, Wand2 } from "lucide-react";
-import { BaseStepProps } from '@/types/setup';
-import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { AIInput } from "@/components/ui/ai-input";
-import { useGroqSuggestions } from "@/hooks/useGroqSuggestions";
+import { supabase } from "@/integrations/supabase/client";
+import { BaseStepProps } from '@/types/setup';
+import { CalendarDays, Plus, Trash2, Calendar, FileText, Clock, MapPin } from "lucide-react";
 
 interface AcademicEvent {
+  id: string;
   event_name: string;
   event_type: string;
-  description: string;
   start_date: string;
   end_date: string;
+  description: string;
 }
 
-interface TermBreak {
-  name: string;
-  start_date: string;
-  end_date: string;
-}
+const EVENT_TYPES = [
+  'Term Start',
+  'Term End', 
+  'Holiday',
+  'Examination',
+  'Event',
+  'Workshop',
+  'Meeting',
+  'Other'
+];
 
 export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   onNext,
   onPrevious,
   onStepComplete,
-  schoolId,
-  schoolData
+  schoolId
 }) => {
+  const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { getSuggestions } = useGroqSuggestions();
-  
-  const [academicYear, setAcademicYear] = useState(schoolData?.academic_year || '2024-2025');
-  const [academicStartDate, setAcademicStartDate] = useState(schoolData?.academic_year_start || '');
-  const [academicEndDate, setAcademicEndDate] = useState(schoolData?.academic_year_end || '');
-  const [numberOfTerms, setNumberOfTerms] = useState(schoolData?.number_of_terms || 3);
-  
-  const [termBreaks, setTermBreaks] = useState<TermBreak[]>(
-    schoolData?.termBreaks || []
-  );
-  const [newTermBreak, setNewTermBreak] = useState<TermBreak>({
-    name: '',
-    start_date: '',
-    end_date: ''
-  });
 
-  const [events, setEvents] = useState<AcademicEvent[]>(
-    schoolData?.academicCalendar || []
-  );
-  const [newEvent, setNewEvent] = useState<AcademicEvent>({
+  // Create a new empty event
+  const createNewEvent = (): AcademicEvent => ({
+    id: Math.random().toString(36).substr(2, 9),
     event_name: '',
-    event_type: '',
-    description: '',
+    event_type: 'Event',
     start_date: '',
-    end_date: ''
+    end_date: '',
+    description: ''
   });
-
-  // Fixed event type change handler to prevent React error
-  const handleEventTypeChange = async (eventType: string) => {
-    // Update state safely
-    setNewEvent(prev => ({ 
-      ...prev, 
-      event_type: eventType,
-      description: prev.description // Keep existing description initially
-    }));
-    
-    // Generate AI description when event type is selected (async operation)
-    if (eventType && eventType.trim() !== '') {
-      try {
-        const prompt = `Generate a brief description for a school academic calendar event of type "${eventType}". Keep it under 50 words and make it relevant for school calendar planning.`;
-        const suggestions = await getSuggestions(prompt, { eventType }, 'academic_events');
-        
-        if (suggestions && suggestions.length > 0) {
-          setNewEvent(prev => ({ ...prev, description: suggestions[0] }));
-        }
-      } catch (error) {
-        console.log('Failed to generate description:', error);
-      }
-    }
-  };
-
-  const addTermBreak = () => {
-    if (!newTermBreak.name || !newTermBreak.start_date || !newTermBreak.end_date) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all term break fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setTermBreaks([...termBreaks, { ...newTermBreak }]);
-    setNewTermBreak({ name: '', start_date: '', end_date: '' });
-  };
-
-  const removeTermBreak = (index: number) => {
-    setTermBreaks(termBreaks.filter((_, i) => i !== index));
-  };
 
   const addEvent = () => {
-    if (!newEvent.event_name || !newEvent.event_type || !newEvent.start_date) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in event name, type, and start date",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setEvents([...events, { ...newEvent }]);
-    setNewEvent({
-      event_name: '',
-      event_type: '',
-      description: '',
-      start_date: '',
-      end_date: ''
-    });
+    setAcademicEvents(prev => [...prev, createNewEvent()]);
   };
 
-  const removeEvent = (index: number) => {
-    setEvents(events.filter((_, i) => i !== index));
+  const updateEvent = (id: string, field: keyof AcademicEvent, value: string) => {
+    setAcademicEvents(prev => prev.map(event => 
+      event.id === id ? { ...event, [field]: value } : event
+    ));
   };
 
-  const saveAcademicCalendar = async () => {
+  const removeEvent = (id: string) => {
+    setAcademicEvents(prev => prev.filter(event => event.id !== id));
+  };
+
+  const validateAndSave = async () => {
     if (!schoolId) {
       toast({
-        title: "Error",
+        title: "❌ Missing Information", 
         description: "School ID is required. Please complete Step 1 first.",
         variant: "destructive",
       });
       return;
     }
 
-    try {
-      // Save events to academic_calendar table
-      if (events.length > 0) {
-        const { error: eventsError } = await supabase
-          .from('academic_calendar')
-          .upsert(events.map(event => ({
-            ...event,
-            school_id: schoolId,
-          })));
+    // Filter out events with empty names
+    const validEvents = academicEvents.filter(event => event.event_name.trim());
+    
+    if (validEvents.length === 0) {
+      toast({
+        title: "⚠️ No Events",
+        description: "Please add at least one academic event to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-        if (eventsError) throw eventsError;
+    setLoading(true);
+    try {
+      // Prepare events for database insertion
+      const eventsForDB = validEvents.map(event => ({
+        school_id: schoolId,
+        event_name: event.event_name.trim(),
+        event_type: event.event_type,
+        start_date: event.start_date,
+        end_date: event.end_date || event.start_date,
+        description: event.description.trim() || null
+      }));
+
+      console.log('Saving academic events:', eventsForDB);
+
+      // Insert events into database
+      const { error } = await supabase
+        .from('academic_calendar')
+        .insert(eventsForDB);
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error(`Failed to save events: ${error.message}`);
       }
 
-      const calendarData = {
-        academicYear,
-        academicStartDate,
-        academicEndDate,
-        numberOfTerms,
-        termBreaks,
-        academicCalendar: events
-      };
-
-      onStepComplete({ 
-        academicCalendar: events,
-        termBreaks,
-        academic_year: academicYear,
-        academic_year_start: academicStartDate,
-        academic_year_end: academicEndDate,
-        number_of_terms: numberOfTerms
-      });
-
       toast({
-        title: "Success",
-        description: "Academic calendar configured successfully!",
+        title: "✅ Success!",
+        description: `${validEvents.length} academic events saved successfully.`,
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
-      
+
+      // Pass data to next step
+      onStepComplete({ academicCalendar: validEvents });
       onNext();
 
     } catch (error) {
       console.error('Error saving academic calendar:', error);
       toast({
-        title: "Error",
-        description: "Failed to save academic calendar",
+        title: "❌ Save Failed",
+        description: error instanceof Error ? error.message : "Failed to save academic calendar. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="space-y-8">
       <div className="text-center space-y-2">
-        <CalendarDays className="h-12 w-12 text-blue-600 mx-auto" />
-        <h2 className="text-2xl font-bold text-gray-800">Academic Calendar Setup</h2>
-        <p className="text-gray-600">Configure your school's academic year and important events</p>
+        <CalendarDays className="h-12 w-12 text-indigo-600 mx-auto" />
+        <h2 className="text-3xl font-bold text-gray-800">Academic Calendar Setup</h2>
+        <p className="text-gray-600">Define your school's academic events, terms, and important dates</p>
       </div>
 
-      {/* Basic Academic Year Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Academic Year Information</CardTitle>
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
+        <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-lg">
+          <CardTitle className="text-xl text-gray-800 flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Academic Events
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Academic Year</Label>
-              <Input
-                value={academicYear}
-                onChange={(e) => setAcademicYear(e.target.value)}
-                placeholder="e.g., 2024-2025"
-              />
+        <CardContent className="space-y-6 p-6">
+          {academicEvents.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No academic events added yet. Click "Add Event" to get started.</p>
             </div>
-            <div>
-              <Label>Start Date</Label>
-              <Input
-                type="date"
-                value={academicStartDate}
-                onChange={(e) => setAcademicStartDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>End Date</Label>
-              <Input
-                type="date"
-                value={academicEndDate}
-                onChange={(e) => setAcademicEndDate(e.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <Label>Number of Terms</Label>
-            <Input
-              type="number"
-              min="2"
-              max="4"
-              value={numberOfTerms}
-              onChange={(e) => setNumberOfTerms(parseInt(e.target.value) || 3)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Term Break Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Term Break Configuration</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Break Name</Label>
-              <AIInput
-                value={newTermBreak.name}
-                onChange={(value) => setNewTermBreak(prev => ({ ...prev, name: value }))}
-                placeholder="e.g., Summer Break"
-                suggestionType="academic_events"
-                context={{ type: 'term_break' }}
-              />
-            </div>
-            <div>
-              <Label>Start Date</Label>
-              <Input
-                type="date"
-                value={newTermBreak.start_date}
-                onChange={(e) => setNewTermBreak(prev => ({ ...prev, start_date: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>End Date</Label>
-              <Input
-                type="date"
-                value={newTermBreak.end_date}
-                onChange={(e) => setNewTermBreak(prev => ({ ...prev, end_date: e.target.value }))}
-              />
-            </div>
-          </div>
-          <Button onClick={addTermBreak} className="w-full">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Term Break
-          </Button>
-
-          {termBreaks.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium">Configured Term Breaks:</h4>
-              {termBreaks.map((termBreak, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <span className="font-medium">{termBreak.name}</span>
-                    <span className="ml-2 text-sm text-gray-600">
-                      {termBreak.start_date} to {termBreak.end_date}
-                    </span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeTermBreak(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Academic Events */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Academic Events</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Event Name</Label>
-              <AIInput
-                value={newEvent.event_name}
-                onChange={(value) => setNewEvent(prev => ({ ...prev, event_name: value }))}
-                placeholder="e.g., Annual Sports Day"
-                suggestionType="academic_events"
-                context={{ type: 'school_event' }}
-              />
-            </div>
-            <div>
-              <Label>Event Type</Label>
-              <AIInput
-                value={newEvent.event_type}
-                onChange={handleEventTypeChange}
-                placeholder="e.g., Sports, Cultural, Academic"
-                suggestionType="academic_events"
-                context={{ type: 'event_type' }}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Description</Label>
-              <Input
-                value={newEvent.description}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Event description (auto-generated based on type)"
-              />
-            </div>
-            <div>
-              <Label>Start Date</Label>
-              <Input
-                type="date"
-                value={newEvent.start_date}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, start_date: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>End Date (Optional)</Label>
-              <Input
-                type="date"
-                value={newEvent.end_date}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, end_date: e.target.value }))}
-              />
-            </div>
-          </div>
-          <Button onClick={addEvent} className="w-full">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Event
-          </Button>
-
-          {events.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium">Configured Events:</h4>
-              {events.map((event, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{event.event_name}</span>
-                      <Badge variant="outline">{event.event_type}</Badge>
+          ) : (
+            <div className="space-y-4">
+              {academicEvents.map((event, index) => (
+                <Card key={event.id} className="border border-gray-200 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Event {index + 1}
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeEvent(event.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{event.description}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {event.start_date} {event.end_date && `to ${event.end_date}`}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeEvent(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Event Name *</Label>
+                        <Input
+                          value={event.event_name}
+                          onChange={(e) => updateEvent(event.id, 'event_name', e.target.value)}
+                          placeholder="Enter event name"
+                          className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Event Type *</Label>
+                        <select
+                          value={event.event_type}
+                          onChange={(e) => updateEvent(event.id, 'event_type', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded-md focus:border-indigo-500 focus:ring-indigo-500"
+                        >
+                          {EVENT_TYPES.map(type => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Start Date *
+                        </Label>
+                        <Input
+                          type="date"
+                          value={event.start_date}
+                          onChange={(e) => updateEvent(event.id, 'start_date', e.target.value)}
+                          className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          End Date
+                        </Label>
+                        <Input
+                          type="date"
+                          value={event.end_date}
+                          onChange={(e) => updateEvent(event.id, 'end_date', e.target.value)}
+                          className="border-gray-300 focus:border-red-500 focus:ring-red-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 space-y-2">
+                      <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Description
+                      </Label>
+                      <Input
+                        value={event.description}
+                        onChange={(e) => updateEvent(event.id, 'description', e.target.value)}
+                        placeholder="Enter event description (optional)"
+                        className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
+          
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addEvent}
+            className="w-full flex items-center gap-2 py-3 border-dashed border-2 border-gray-300 hover:border-indigo-500 hover:bg-indigo-50"
+          >
+            <Plus className="h-5 w-5" />
+            Add Academic Event
+          </Button>
         </CardContent>
       </Card>
 
-      {/* Navigation */}
-      <div className="flex justify-between pt-6">
-        <Button variant="outline" onClick={onPrevious}>
-          ← Previous
+      <div className="flex justify-between pt-6 border-t">
+        <Button 
+          onClick={onPrevious}
+          variant="outline"
+          className="px-6 py-2"
+        >
+          ← Previous: School Info
         </Button>
-        <Button onClick={saveAcademicCalendar}>
-          Next: Infrastructure →
+        
+        <Button 
+          onClick={validateAndSave}
+          disabled={loading || academicEvents.length === 0}
+          className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+        >
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Saving...
+            </div>
+          ) : (
+            'Next: Infrastructure →'
+          )}
         </Button>
       </div>
     </div>

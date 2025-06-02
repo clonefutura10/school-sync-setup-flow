@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from './AuthProvider';
 import { useSetupProgress } from '@/hooks/useSetupProgress';
 import { SchoolInfoStep } from './setup-steps/SchoolInfoStep';
@@ -56,15 +55,17 @@ export const SchoolSetupWizard = () => {
   const progressPercent = ((currentStep - 1) / (STEPS.length - 1)) * 100;
 
   useEffect(() => {
-    // Load existing school data from progress
     if (progress.stepData) {
       setSchoolData(progress.stepData);
+      console.log('Loaded school data:', progress.stepData);
+      console.log('Current school ID:', progress.schoolId);
     }
   }, [progress]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length) {
       const newStep = currentStep + 1;
+      console.log(`Moving to step ${newStep}`);
       saveProgress({ 
         currentStep: newStep,
         completedSteps: [...progress.completedSteps, currentStep]
@@ -74,6 +75,7 @@ export const SchoolSetupWizard = () => {
 
   const handlePrevious = () => {
     if (currentStep > 1) {
+      console.log(`Moving back to step ${currentStep - 1}`);
       saveProgress({ currentStep: currentStep - 1 });
     }
   };
@@ -81,25 +83,22 @@ export const SchoolSetupWizard = () => {
   const handleStepComplete = async (stepData: any) => {
     console.log('Step completed with data:', stepData);
     
-    // Accumulate all setup data
     const updatedSchoolData = { ...schoolData, ...stepData };
     setSchoolData(updatedSchoolData);
     
-    // Handle school creation if it's the first step and contains school ID
     let newSchoolId = schoolId;
     if (stepData.schoolId && !schoolId) {
       newSchoolId = stepData.schoolId;
       console.log('Setting new school ID:', newSchoolId);
     }
     
-    // Save progress with updated data
     await saveProgress({
       stepData: updatedSchoolData,
       schoolId: newSchoolId,
       completedSteps: [...progress.completedSteps, currentStep]
     });
 
-    // Store individual step data in localStorage for backward compatibility
+    // Store individual step data in localStorage for compatibility
     if (stepData.students) {
       localStorage.setItem('schoolStudents', JSON.stringify(stepData.students));
     }
@@ -171,7 +170,6 @@ export const SchoolSetupWizard = () => {
   };
 
   const renderStepIndicator = () => {
-    // Calculate visible range of steps to show (for responsive design)
     let visibleSteps = STEPS;
     const maxVisibleSteps = 5;
     
@@ -230,30 +228,29 @@ export const SchoolSetupWizard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header with sign out */}
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-1">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">School Setup Wizard</h1>
             <p className="text-lg text-gray-600">Complete 10-step setup for comprehensive school management</p>
           </div>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">Welcome, {user?.email}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSignOut}
-              className="flex items-center space-x-2"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Sign Out</span>
-            </Button>
-          </div>
+          {user && (
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">Welcome, {user?.email}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="flex items-center space-x-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Step Indicator */}
         {renderStepIndicator()}
 
-        {/* Progress Card */}
         <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
@@ -274,14 +271,12 @@ export const SchoolSetupWizard = () => {
           </CardHeader>
         </Card>
 
-        {/* Main Content */}
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardContent className="p-8">
             {renderCurrentStep()}
           </CardContent>
         </Card>
 
-        {/* Footer Info */}
         <div className="text-center mt-6 text-sm text-gray-500">
           <p>✨ Enhanced with AI-powered analytics and comprehensive data validation</p>
         </div>

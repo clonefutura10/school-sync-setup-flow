@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,7 +121,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
       console.log('User signed up successfully:', authData.user.id);
 
-      // Step 2: Create school record - removed created_by field
+      // Step 2: Create school record
       const schoolInsertData = {
         name: schoolData.name.trim(),
         address: schoolData.address.trim() || null,
@@ -168,6 +169,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         schoolId: insertedSchool.id 
       };
       
+      console.log('Completing step with school ID:', insertedSchool.id);
       onStepComplete(completeSchoolData);
       onNext();
 
