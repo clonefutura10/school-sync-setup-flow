@@ -101,7 +101,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
     setLoading(true);
     try {
-      // Try to sign in first
+      // First try to sign in
       console.log('Attempting user signin...');
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: authEmail,
@@ -110,20 +110,10 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
       let currentUser = signInData?.user;
 
-      // If signin failed, try to sign up
-      if (signInError) {
-        console.log('Signin failed, attempting signup...', signInError.message);
+      // If signin failed and user doesn't exist, try to sign up
+      if (signInError && signInError.message === 'Invalid login credentials') {
+        console.log('User not found, attempting signup...');
         
-        // Check if it's a rate limit error
-        if (signInError.message.includes('For security purposes')) {
-          toast({
-            title: "⏱️ Rate Limited",
-            description: "Please wait a moment before trying again. You can sign in if you already have an account.",
-            variant: "destructive",
-          });
-          return;
-        }
-
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: authEmail,
           password: authPassword,
@@ -139,6 +129,9 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
         currentUser = signUpData.user;
         console.log('User signed up successfully:', currentUser?.id);
+      } else if (signInError) {
+        console.error('Signin error:', signInError);
+        throw new Error(`Authentication failed: ${signInError.message}`);
       } else {
         console.log('User signed in successfully:', currentUser?.id);
       }
@@ -250,6 +243,28 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
     onNext();
   };
 
+  // If user is logged in, skip authentication form
+  const handleSkipAuth = () => {
+    if (!schoolData.name.trim()) {
+      toast({
+        title: "❌ Validation Error",
+        description: "School name is required to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Skip authentication and just proceed with sample data
+    const completeSchoolData = { 
+      ...schoolData, 
+      schoolId: 'temp-id-' + Date.now() // Temporary ID for demo
+    };
+    
+    console.log('Skipping auth and proceeding with data:', completeSchoolData);
+    onStepComplete(completeSchoolData);
+    onNext();
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -281,7 +296,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
           <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-lg">
             <CardTitle className="text-xl text-gray-800 flex items-center gap-2">
               <Lock className="h-5 w-5" />
-              Account Information
+              Account Information (Optional)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 p-6">
@@ -289,7 +304,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Mail className="h-4 w-4" />
-                  Email Address *
+                  Email Address
                 </Label>
                 <Input
                   type="email"
@@ -302,7 +317,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Lock className="h-4 w-4" />
-                  Password *
+                  Password
                 </Label>
                 <Input
                   type="password"
@@ -484,11 +499,21 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         </CardContent>
       </Card>
 
-      <div className="flex justify-end pt-6 border-t">
+      <div className="flex justify-between pt-6 border-t">
+        {!user && (
+          <Button 
+            onClick={handleSkipAuth}
+            variant="outline"
+            disabled={loading}
+            className="px-8 py-3"
+          >
+            Skip & Continue →
+          </Button>
+        )}
         <Button 
           onClick={user ? handleSubmitWithExistingUser : handleSignInAndSubmit} 
           disabled={loading}
-          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
+          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 disabled:opacity-50 ml-auto"
         >
           {loading ? (
             <div className="flex items-center gap-2">
