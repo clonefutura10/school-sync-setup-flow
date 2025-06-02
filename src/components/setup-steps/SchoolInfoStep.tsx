@@ -113,13 +113,13 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
       
       toast({
         title: "✅ Success!",
-        description: "School information saved successfully!",
+        description: "School information saved! Moving to next step...",
         className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
 
-      console.log('Calling onNext to move to step 2');
+      console.log('FORCING NAVIGATION TO STEP 2 - Calling onNext');
       
-      // Move to next step immediately
+      // Force navigation to next step
       onNext();
       
     } catch (error) {

@@ -88,11 +88,15 @@ export const SchoolSetupWizard = () => {
   const handleNext = () => {
     if (currentStep < STEPS.length) {
       const newStep = currentStep + 1;
-      console.log(`Moving to step ${newStep}`);
+      console.log(`WIZARD: Moving from step ${currentStep} to step ${newStep}`);
+      
+      // Force immediate state update and save
       saveProgress({ 
         currentStep: newStep,
         completedSteps: [...progress.completedSteps, currentStep]
       });
+      
+      console.log(`WIZARD: Step changed to ${newStep}`);
     }
   };
 
@@ -104,7 +108,7 @@ export const SchoolSetupWizard = () => {
   };
 
   const handleStepComplete = async (stepData: any) => {
-    console.log('Step completed with data:', stepData);
+    console.log('WIZARD: Step completed with data:', stepData);
     
     const updatedSchoolData = { ...schoolData, ...stepData };
     setSchoolData(updatedSchoolData);
@@ -263,6 +267,7 @@ export const SchoolSetupWizard = () => {
             {currentSchoolId && (
               <p className="text-sm text-green-600 mt-2">School ID: {currentSchoolId}</p>
             )}
+            <p className="text-sm text-blue-600 mt-1">Current Step: {currentStep}</p>
           </div>
           {user && (
             <div className="flex items-center space-x-4">
