@@ -29,6 +29,12 @@ const EVENT_TYPES = [
   'Other'
 ];
 
+// UUID validation function
+const isValidUUID = (uuid: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+};
+
 export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   onNext,
   onPrevious,
@@ -64,10 +70,11 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   };
 
   const validateAndSave = async () => {
-    if (!schoolId) {
+    // Validate school ID is a proper UUID
+    if (!schoolId || !isValidUUID(schoolId)) {
       toast({
-        title: "❌ Missing Information", 
-        description: "School ID is required. Please complete Step 1 first.",
+        title: "❌ Invalid School ID", 
+        description: "School ID is missing or invalid. Please complete Step 1 first.",
         variant: "destructive",
       });
       return;
@@ -89,7 +96,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
     try {
       // Prepare events for database insertion
       const eventsForDB = validEvents.map(event => ({
-        school_id: schoolId,
+        school_id: schoolId, // This is now guaranteed to be a valid UUID
         event_name: event.event_name.trim(),
         event_type: event.event_type,
         start_date: event.start_date,
@@ -97,7 +104,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
         description: event.description.trim() || null
       }));
 
-      console.log('Saving academic events:', eventsForDB);
+      console.log('Saving academic events with valid UUID school_id:', schoolId, eventsForDB);
 
       // Insert events into database
       const { error } = await supabase
