@@ -5,11 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { BookCopy, User, Users, AlertTriangle, CheckCircle, Wand2 } from "lucide-react";
+import { BookCopy, User, Users, AlertTriangle, CheckCircle } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useGroqSuggestions } from "@/hooks/useGroqSuggestions";
 
 interface TeacherSubjectMapping {
   id?: string;
@@ -28,7 +27,6 @@ export const TeacherSubjectMappingStep: React.FC<BaseStepProps> = ({
   schoolData
 }) => {
   const { toast } = useToast();
-  const { getSuggestions } = useGroqSuggestions();
   
   const [mappings, setMappings] = useState<TeacherSubjectMapping[]>(
     schoolData.teacherSubjectMappings || []
@@ -43,52 +41,6 @@ export const TeacherSubjectMappingStep: React.FC<BaseStepProps> = ({
   const subjects = schoolData.subjects || [];
   const classes = schoolData.classes || [];
   const timeSlots = schoolData.timeSlots || [];
-
-  // Generate AI-powered mappings
-  const generateAIMappings = async () => {
-    try {
-      const prompt = `Based on these teachers: ${teachers.map(t => `${t.first_name} ${t.last_name} (${t.subjects?.join(', ') || 'General'})`).join(', ')}, subjects: ${subjects.map(s => s.name).join(', ')}, and classes: ${classes.map(c => c.name).join(', ')}, suggest optimal teacher-subject-class assignments. Consider teacher expertise and balanced workloads.`;
-      
-      const suggestions = await getSuggestions(prompt, {
-        teachers: teachers.length,
-        subjects: subjects.length,
-        classes: classes.length
-      }, 'teacher_subject_mappings');
-      
-      if (suggestions.length > 0) {
-        // Generate balanced mappings
-        const generatedMappings: TeacherSubjectMapping[] = [];
-        
-        // Simple algorithm to distribute subjects across teachers and classes
-        teachers.forEach((teacher, tIndex) => {
-          subjects.forEach((subject, sIndex) => {
-            classes.forEach((cls, cIndex) => {
-              // Distribute assignments evenly
-              if ((tIndex + sIndex + cIndex) % 3 === 0 && generatedMappings.length < teachers.length * 2) {
-                generatedMappings.push({
-                  teacher_id: teacher.id,
-                  subject_id: subject.id,
-                  class_id: cls.id,
-                  periods_per_week: Math.floor(Math.random() * 3) + 3, // 3-5 periods
-                  preferred_time_slots: [],
-                });
-              }
-            });
-          });
-        });
-        
-        setMappings(generatedMappings);
-        
-        toast({
-          title: "✨ AI Generated Assignments!",
-          description: `Created ${generatedMappings.length} teacher-subject-class mappings with balanced workloads.`,
-          className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-        });
-      }
-    } catch (error) {
-      console.log('Failed to generate AI mappings:', error);
-    }
-  };
 
   // Calculate teacher workloads
   const getTeacherWorkload = (teacherId: string) => {
@@ -198,6 +150,7 @@ export const TeacherSubjectMappingStep: React.FC<BaseStepProps> = ({
 
     try {
       if (mappings.length > 0) {
+        // Use type assertion since types haven't been updated yet
         const { error } = await (supabase as any)
           .from('teacher_subject_mappings')
           .upsert(mappings.map(mapping => ({
@@ -230,27 +183,8 @@ export const TeacherSubjectMappingStep: React.FC<BaseStepProps> = ({
       <div className="text-center space-y-2">
         <BookCopy className="h-12 w-12 text-blue-600 mx-auto" />
         <h2 className="text-2xl font-bold text-gray-800">Teacher-Subject-Class Mapping</h2>
-        <p className="text-gray-600">Assign teachers to subjects and classes with AI-powered workload management</p>
+        <p className="text-gray-600">Assign teachers to subjects and classes with workload management</p>
       </div>
-
-      {/* AI Generate Button */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Quick Setup with AI</span>
-            <Button
-              onClick={generateAIMappings}
-              className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-            >
-              <Wand2 className="h-4 w-4" />
-              Generate AI Assignments
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600">Let AI automatically create balanced teacher-subject-class assignments based on your school data.</p>
-        </CardContent>
-      </Card>
 
       {/* Add New Mapping */}
       <Card>

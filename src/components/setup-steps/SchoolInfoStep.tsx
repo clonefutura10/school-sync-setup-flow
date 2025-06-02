@@ -1,60 +1,79 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BaseStepProps } from '@/types/setup';
-import { GraduationCap, School, User, Mail, Phone, MapPin, Calendar, Users, Target, Clock } from "lucide-react";
-import { AIInput } from "@/components/ui/ai-input";
+import { GraduationCap, MapPin, Mail, Phone, User, Calendar, Eye, Wand2 } from "lucide-react";
+
+const SAMPLE_SCHOOL_DATA = {
+  name: 'Springfield Elementary School',
+  address: '742 Evergreen Terrace, Springfield, IL 62701',
+  phone: '+1-555-0100',
+  email: 'info@springfield-elementary.edu',
+  principal_name: 'Dr. Sarah Johnson',
+  academic_year: '2024-2025',
+  number_of_terms: 3,
+  working_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as string[],
+  school_vision: 'To provide excellence in education and foster lifelong learning in a nurturing environment that prepares students for success in the 21st century.',
+  school_type: 'Public',
+  academic_year_start: '2024-08-15',
+  academic_year_end: '2025-06-15',
+  timezone: 'America/Chicago'
+};
 
 export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   onNext,
-  onStepComplete,
-  schoolData: existingSchoolData
+  onStepComplete
 }) => {
-  const [formData, setFormData] = useState({
-    name: existingSchoolData?.name || '',
-    address: existingSchoolData?.address || '',
-    phone: existingSchoolData?.phone || '',
-    email: existingSchoolData?.email || '',
-    principal_name: existingSchoolData?.principal_name || '',
-    school_type: existingSchoolData?.school_type || 'Public',
-    academic_year: existingSchoolData?.academic_year || '',
-    academic_year_start: existingSchoolData?.academic_year_start || '',
-    academic_year_end: existingSchoolData?.academic_year_end || '',
-    number_of_terms: existingSchoolData?.number_of_terms || 3,
-    working_days: existingSchoolData?.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    school_vision: existingSchoolData?.school_vision || '',
-    timezone: existingSchoolData?.timezone || 'UTC'
+  const [schoolData, setSchoolData] = useState({
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
+    principal_name: '',
+    academic_year: '',
+    number_of_terms: 3,
+    working_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as string[],
+    school_vision: '',
+    school_type: 'Public',
+    academic_year_start: '',
+    academic_year_end: '',
+    timezone: 'UTC'
   });
-  
   const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: string, value: string | number | string[]) => {
+    console.log(`Updating field ${field} with value:`, value);
+    setSchoolData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleWorkingDaysChange = (day: string, checked: boolean) => {
-    setFormData(prev => ({
+  const toggleWorkingDay = (day: string) => {
+    setSchoolData(prev => ({
       ...prev,
-      working_days: checked 
-        ? [...prev.working_days, day]
-        : prev.working_days.filter(d => d !== day)
+      working_days: prev.working_days.includes(day)
+        ? prev.working_days.filter(d => d !== day)
+        : [...prev.working_days, day]
     }));
   };
 
-  const validateAndSave = async () => {
-    if (isSubmitting) {
-      console.log('Already submitting, ignoring duplicate submission');
-      return;
-    }
+  const handleAutoFill = () => {
+    setSchoolData(SAMPLE_SCHOOL_DATA);
+    toast({
+      title: "✨ Auto-filled successfully!",
+      description: "Sample school data has been loaded into the form.",
+      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+    });
+  };
 
-    if (!formData.name.trim()) {
+  const handleSubmit = async () => {
+    console.log('Starting school data submission:', schoolData);
+    
+    if (!schoolData.name.trim()) {
       toast({
         title: "❌ Validation Error",
         description: "School name is required.",
@@ -63,140 +82,121 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
       return;
     }
 
-    setIsSubmitting(true);
     setLoading(true);
-    
     try {
-      console.log('Creating school with data:', formData);
-      
-      // Insert school data and let Supabase generate the UUID
-      const { data: schoolData, error } = await supabase
+      // Prepare school data for database
+      const schoolInsertData = {
+        name: schoolData.name.trim(),
+        address: schoolData.address.trim() || null,
+        phone: schoolData.phone.trim() || null,
+        email: schoolData.email.trim() || null,
+        principal_name: schoolData.principal_name.trim() || null,
+        academic_year: schoolData.academic_year.trim() || null,
+        number_of_terms: schoolData.number_of_terms,
+        working_days: schoolData.working_days,
+        school_vision: schoolData.school_vision.trim() || null,
+        school_type: schoolData.school_type,
+        academic_year_start: schoolData.academic_year_start || null,
+        academic_year_end: schoolData.academic_year_end || null,
+        timezone: schoolData.timezone
+      };
+
+      console.log('Inserting school data:', schoolInsertData);
+
+      const { data: insertedSchool, error: insertError } = await supabase
         .from('schools')
-        .insert([{
-          name: formData.name.trim(),
-          address: formData.address.trim() || null,
-          phone: formData.phone.trim() || null,
-          email: formData.email.trim() || null,
-          principal_name: formData.principal_name.trim() || null,
-          school_type: formData.school_type,
-          academic_year: formData.academic_year.trim() || null,
-          academic_year_start: formData.academic_year_start || null,
-          academic_year_end: formData.academic_year_end || null,
-          number_of_terms: formData.number_of_terms,
-          working_days: formData.working_days,
-          school_vision: formData.school_vision.trim() || null,
-          timezone: formData.timezone
-        }])
+        .insert([schoolInsertData])
         .select()
         .single();
 
-      if (error) {
-        console.error('Database error:', error);
-        throw new Error(`Failed to create school: ${error.message}`);
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        throw new Error(`Failed to save school information: ${insertError.message}`);
       }
 
-      const schoolId = schoolData.id;
-      console.log('School created successfully with ID:', schoolId);
-      console.log('School ID type:', typeof schoolId);
-      console.log('School ID value:', schoolId);
+      if (!insertedSchool) {
+        throw new Error('No school data returned after insert');
+      }
+
+      console.log('School created successfully:', insertedSchool);
 
       toast({
-        title: "✅ School Information Saved!",
-        description: `${formData.name} has been successfully registered.`,
+        title: "✅ Success!",
+        description: "School information saved successfully!",
         className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
 
-      // Pass the data to parent component with the actual UUID
-      onStepComplete({ 
-        schoolId: schoolId,
-        ...formData 
-      });
+      // Pass both school data and ID to next step
+      const completeSchoolData = { 
+        ...schoolData, 
+        schoolId: insertedSchool.id 
+      };
       
-      // Move to next step
+      onStepComplete(completeSchoolData);
       onNext();
 
     } catch (error) {
-      console.error('Error saving school:', error);
+      console.error('Error saving school information:', error);
       toast({
         title: "❌ Save Failed",
         description: error instanceof Error ? error.message : "Failed to save school information. Please try again.",
         variant: "destructive",
+        className: "fixed top-4 right-4 w-96",
       });
     } finally {
       setLoading(false);
-      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="space-y-8">
-      <div className="text-center space-y-2">
-        <GraduationCap className="h-12 w-12 text-blue-600 mx-auto" />
-        <h2 className="text-3xl font-bold text-gray-800">School Information</h2>
-        <p className="text-gray-600">Let's start by setting up your school's basic information</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <div className="text-center space-y-2">
+            <GraduationCap className="h-12 w-12 text-blue-600 mx-auto" />
+            <h2 className="text-3xl font-bold text-gray-800">School Information</h2>
+            <p className="text-gray-600">Enter your school's basic details to get started</p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleAutoFill}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:from-blue-100 hover:to-purple-100"
+        >
+          <Wand2 className="h-5 w-5 text-blue-600" />
+          <span className="font-medium text-blue-700">Auto Fill Sample Data</span>
+        </Button>
       </div>
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
-          <CardTitle className="text-xl text-gray-800">School Information</CardTitle>
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
+          <CardTitle className="text-xl text-gray-800">Basic Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <School className="h-4 w-4" />
+                <GraduationCap className="h-4 w-4" />
                 School Name *
               </Label>
-              <AIInput
-                value={formData.name}
-                onChange={(value) => handleInputChange('name', value)}
+              <Input
+                value={schoolData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder="Enter school name"
-                suggestionType="school_names"
-                context={{ location: formData.address }}
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Principal Name
               </Label>
-              <AIInput
-                value={formData.principal_name}
-                onChange={(value) => handleInputChange('principal_name', value)}
+              <Input
+                value={schoolData.principal_name}
+                onChange={(e) => handleInputChange('principal_name', e.target.value)}
                 placeholder="Enter principal's name"
-                suggestionType="teacher_data"
-                context={{ field: 'first_name' }}
                 className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email Address
-              </Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="school@example.com"
-                className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                Phone Number
-              </Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="Enter phone number"
-                className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
               />
             </div>
           </div>
@@ -206,150 +206,150 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
               <MapPin className="h-4 w-4" />
               Address
             </Label>
-            <Input
-              value={formData.address}
+            <Textarea
+              value={schoolData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
               placeholder="Enter school address"
-              className="border-gray-300 focus:border-yellow-500 focus:ring-yellow-500"
+              className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <School className="h-4 w-4" />
-              School Type
-            </Label>
-            <select
-              value={formData.school_type}
-              onChange={(e) => handleInputChange('school_type', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:border-red-500 focus:ring-red-500"
-            >
-              <option value="Public">Public</option>
-              <option value="Private">Private</option>
-              <option value="Charter">Charter</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Phone Number
+              </Label>
+              <Input
+                value={schoolData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="Enter phone number"
+                className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email Address
+              </Label>
+              <Input
+                value={schoolData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+                className="border-gray-300 focus:border-red-500 focus:ring-red-500"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Academic Year
               </Label>
               <Input
-                value={formData.academic_year}
+                value={schoolData.academic_year}
                 onChange={(e) => handleInputChange('academic_year', e.target.value)}
-                placeholder="e.g., 2023-2024"
+                placeholder="e.g., 2024-2025"
+                className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">Number of Terms</Label>
+              <Input
+                type="number"
+                value={schoolData.number_of_terms}
+                onChange={(e) => handleInputChange('number_of_terms', parseInt(e.target.value) || 3)}
+                min="2"
+                max="4"
                 className="border-gray-300 focus:border-pink-500 focus:ring-pink-500"
               />
             </div>
-
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Academic Year Start
-              </Label>
-              <Input
-                type="date"
-                value={formData.academic_year_start}
-                onChange={(e) => handleInputChange('academic_year_start', e.target.value)}
-                className="border-gray-300 focus:border-teal-500 focus:ring-teal-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Academic Year End
-              </Label>
-              <Input
-                type="date"
-                value={formData.academic_year_end}
-                onChange={(e) => handleInputChange('academic_year_end', e.target.value)}
-                className="border-gray-300 focus:border-rose-500 focus:ring-rose-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Number of Terms
-              </Label>
-              <Input
-                type="number"
-                value={formData.number_of_terms}
-                onChange={(e) => handleInputChange('number_of_terms', parseInt(e.target.value))}
-                placeholder="Enter number of terms"
-                className="border-gray-300 focus:border-sky-500 focus:ring-sky-500"
-              />
+              <Label className="text-sm font-semibold text-gray-700">School Type</Label>
+              <select
+                className="w-full p-2 border border-gray-300 rounded-md focus:border-teal-500 focus:ring-teal-500"
+                value={schoolData.school_type}
+                onChange={(e) => handleInputChange('school_type', e.target.value)}
+              >
+                <option value="Public">Public</option>
+                <option value="Private">Private</option>
+                <option value="Charter">Charter</option>
+                <option value="International">International</option>
+              </select>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Working Days
+              <Eye className="h-4 w-4" />
+              School Vision/Mission
             </Label>
+            <Textarea
+              value={schoolData.school_vision}
+              onChange={(e) => handleInputChange('school_vision', e.target.value)}
+              placeholder="Enter your school's vision or mission statement"
+              className="border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-gray-700">Working Days</Label>
             <div className="flex flex-wrap gap-2">
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                <div key={day} className="flex items-center space-x-2">
-                  <Input
-                    type="checkbox"
-                    id={day}
-                    checked={formData.working_days.includes(day)}
-                    onChange={(e) => handleWorkingDaysChange(day, e.target.checked)}
-                    className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                  />
-                  <Label htmlFor={day} className="text-gray-600">{day}</Label>
-                </div>
+                <Button
+                  key={day}
+                  type="button"
+                  variant={schoolData.working_days.includes(day) ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => toggleWorkingDay(day)}
+                  className="transition-all duration-200"
+                >
+                  {day}
+                </Button>
               ))}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              School Vision
-            </Label>
-            <Input
-              value={formData.school_vision}
-              onChange={(e) => handleInputChange('school_vision', e.target.value)}
-              placeholder="Enter school vision"
-              className="border-gray-300 focus:border-lime-500 focus:ring-lime-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Timezone
-            </Label>
-            <Input
-              value={formData.timezone}
-              onChange={(e) => handleInputChange('timezone', e.target.value)}
-              placeholder="Enter timezone"
-              className="border-gray-300 focus:border-zinc-500 focus:ring-zinc-500"
-            />
-          </div>
-
-          <div className="flex justify-end pt-6 border-t">
-            <Button 
-              onClick={validateAndSave}
-              disabled={loading || isSubmitting}
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Setting up school...
-                </div>
-              ) : (
-                'Sign Up & Continue →'
-              )}
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">Academic Year Start</Label>
+              <Input
+                type="date"
+                value={schoolData.academic_year_start}
+                onChange={(e) => handleInputChange('academic_year_start', e.target.value)}
+                className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">Academic Year End</Label>
+              <Input
+                type="date"
+                value={schoolData.academic_year_end}
+                onChange={(e) => handleInputChange('academic_year_end', e.target.value)}
+                className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      <div className="flex justify-end pt-6 border-t">
+        <Button 
+          onClick={handleSubmit} 
+          disabled={loading}
+          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
+        >
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Saving...
+            </div>
+          ) : (
+            'Save & Continue →'
+          )}
+        </Button>
+      </div>
     </div>
   );
 };

@@ -1,72 +1,17 @@
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, ExternalLink, Download, User, Users, BookOpen, Building, Clock, GraduationCap, Calendar, Award, FlaskConical, Copy, Eye, EyeOff, Key } from "lucide-react";
+import { CheckCircle, ExternalLink, Download, User, Users, BookOpen, Building, Clock, GraduationCap, Calendar, Award, FlaskConical } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 import { DataExport } from '../DataExport';
 import { passDataToScheduler } from '@/utils/schedulerIntegration';
-import { useToast } from "@/hooks/use-toast";
 
 export const SetupComplete: React.FC<BaseStepProps> = ({
   onPrevious,
   schoolId,
   schoolData
 }) => {
-  const { toast } = useToast();
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
-  const [credentialsGenerated, setCredentialsGenerated] = useState(false);
-
-  const generateCredentials = () => {
-    console.log('Generating credentials...');
-    const schoolName = schoolData?.name || 'School';
-    const cleanSchoolName = schoolName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const username = `admin_${cleanSchoolName}`;
-    
-    // Generate a secure random password
-    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length));
-    }
-    
-    console.log('Generated credentials:', { username, password });
-    setCredentials({ username, password });
-    setCredentialsGenerated(true);
-    
-    // Store credentials in localStorage for login validation
-    localStorage.setItem('adminCredentials', JSON.stringify({ username, password }));
-    
-    toast({
-      title: "Credentials Generated!",
-      description: "Your login credentials have been created successfully",
-      className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-    });
-  };
-
-  const copyToClipboard = async (text: string, type: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied!",
-        description: `${type} copied to clipboard`,
-        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-      });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to copy to clipboard",
-        variant: "destructive",
-        className: "fixed top-4 right-4 w-96 border-l-4 border-l-red-500",
-      });
-    }
-  };
-
-  const copyAllCredentials = async () => {
-    const credentialText = `Username: ${credentials.username}\nPassword: ${credentials.password}`;
-    await copyToClipboard(credentialText, 'Credentials');
-  };
-
   const handleGoToScheduler = () => {
     // Pass comprehensive data to scheduler
     if (schoolId && schoolData) {
@@ -77,28 +22,14 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
     window.open('https://chrono-school-scheduler-plus.lovable.app/', '_blank');
   };
 
-  const handleGoToLogin = () => {
-    // Navigate to local login page
-    window.location.href = '/login';
-  };
-
   const handleStartOver = () => {
     localStorage.removeItem('schoolId');
     localStorage.removeItem('setupSchoolId');
     localStorage.removeItem('schedulerData');
     localStorage.removeItem('setupComplete');
     localStorage.removeItem('schoolInfo');
-    localStorage.removeItem('adminCredentials');
     window.location.reload();
   };
-
-  if (!schoolData) {
-    return (
-      <div className="text-center">
-        <p>Loading school data...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8">
@@ -116,130 +47,11 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
             Setup Complete!
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Congratulations! Your school has been successfully configured. Generate your login credentials below to access your dashboard.
+            Congratulations! Your school has been successfully configured with comprehensive information. 
+            Your enhanced data is ready for the advanced scheduling system.
           </p>
         </div>
       </div>
-
-      {/* PROMINENT Generate Credentials Section */}
-      <Card className="border-4 border-blue-500 shadow-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
-        <CardHeader className="text-center pb-6">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 bg-blue-600 rounded-full shadow-lg">
-              <Key className="h-10 w-10 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-3xl font-bold text-blue-700 mb-2">
-            🔐 Generate Your Login Credentials
-          </CardTitle>
-          <p className="text-blue-600 font-semibold text-lg">
-            Click the button below to create your secure login credentials
-          </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          <div className="flex justify-center mb-6">
-            <Button
-              onClick={generateCredentials}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-12 py-6 text-2xl font-bold shadow-xl transform hover:scale-105 transition-all duration-200"
-              size="lg"
-            >
-              <Key className="h-8 w-8 mr-4" />
-              Generate Credentials Now!
-            </Button>
-          </div>
-
-          {/* Show credentials immediately after generation */}
-          {credentialsGenerated && (
-            <div className="bg-white rounded-2xl p-8 border-2 border-green-300 shadow-xl mt-6">
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-green-700">🎉 Your Login Credentials Are Ready!</h3>
-                <p className="text-green-600 font-semibold">Save these credentials to access your dashboard</p>
-              </div>
-              
-              <div className="space-y-6">
-                {/* Username */}
-                <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <User className="h-6 w-6 text-blue-600" />
-                        <span className="text-lg font-bold text-blue-800 uppercase tracking-wide">Username</span>
-                      </div>
-                      <div className="font-mono text-2xl text-gray-900 font-bold bg-white px-4 py-3 rounded-lg border-2 border-blue-300">
-                        {credentials.username}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => copyToClipboard(credentials.username, 'Username')}
-                      className="ml-6 border-2 border-blue-300 hover:bg-blue-100"
-                    >
-                      <Copy className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Password */}
-                <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 border-2 border-purple-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Key className="h-6 w-6 text-purple-600" />
-                        <span className="text-lg font-bold text-purple-800 uppercase tracking-wide">Password</span>
-                      </div>
-                      <div className="font-mono text-2xl text-gray-900 font-bold bg-white px-4 py-3 rounded-lg border-2 border-purple-300">
-                        {showPassword ? credentials.password : '••••••••••••'}
-                      </div>
-                    </div>
-                    <div className="flex gap-3 ml-6">
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="border-2 border-purple-300 hover:bg-purple-100"
-                      >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        onClick={() => copyToClipboard(credentials.password, 'Password')}
-                        className="border-2 border-purple-300 hover:bg-purple-100"
-                      >
-                        <Copy className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Important Notice */}
-              <div className="mt-8 p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border-2 border-amber-300 shadow-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="text-3xl">🔒</div>
-                  <span className="text-xl font-bold text-amber-800">IMPORTANT!</span>
-                </div>
-                <p className="text-amber-800 font-semibold text-lg leading-relaxed">
-                  These credentials are required to access your school dashboard. Please save them securely before proceeding.
-                </p>
-              </div>
-
-              {/* Login Button */}
-              <div className="flex justify-center mt-8">
-                <Button 
-                  onClick={() => window.location.href = '/login'}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-12 py-4 text-xl font-bold shadow-xl transform hover:scale-105 transition-all duration-200"
-                  size="lg"
-                >
-                  Login to Dashboard Now
-                  <ExternalLink className="h-6 w-6 ml-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Enhanced Setup Data Review */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-gray-50 to-slate-50">
@@ -520,6 +332,46 @@ export const SetupComplete: React.FC<BaseStepProps> = ({
 
       {/* Data Export Section */}
       {schoolId && <DataExport schoolId={schoolId} />}
+
+      {/* Next Steps */}
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-purple-50">
+        <CardHeader>
+          <CardTitle className="text-center text-xl">Ready for Advanced Scheduling!</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <p className="text-center text-gray-700 text-lg">
+            Your comprehensive school data with enhanced academic details is now ready for the advanced scheduling system. 
+            All configuration data will be automatically loaded and utilized for intelligent timetable generation.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              onClick={handleGoToScheduler}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg flex items-center gap-2"
+              size="lg"
+            >
+              Open Advanced Scheduler
+              <ExternalLink className="h-5 w-5" />
+            </Button>
+            
+            <Button 
+              variant="outline"
+              onClick={handleStartOver}
+              className="px-8 py-3 rounded-lg font-semibold border-2"
+              size="lg"
+            >
+              Setup Another School
+            </Button>
+          </div>
+
+          <div className="text-center">
+            <p className="text-sm text-gray-500">
+              💡 <strong>Note:</strong> The scheduler will automatically detect and load your enhanced setup data including 
+              teacher qualifications, subject requirements, class capacities, and academic configuration.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Navigation */}
       <div className="flex justify-start pt-4">

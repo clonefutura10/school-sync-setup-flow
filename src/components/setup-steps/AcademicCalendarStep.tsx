@@ -1,290 +1,374 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar, Plus, Trash2, CalendarDays, Clock, GraduationCap } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
-import { CalendarDays, Plus, Trash2, Calendar, FileText, Clock, MapPin } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AcademicEvent {
-  id: string;
+  id?: string;
   event_name: string;
-  event_type: string;
+  event_type: 'holiday' | 'exam' | 'event' | 'break';
   start_date: string;
   end_date: string;
   description: string;
 }
 
-const EVENT_TYPES = [
-  'Term Start',
-  'Term End', 
-  'Holiday',
-  'Examination',
-  'Event',
-  'Workshop',
-  'Meeting',
-  'Other'
-];
-
-// UUID validation function
-const isValidUUID = (uuid: string): boolean => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
-};
-
 export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   onNext,
   onPrevious,
   onStepComplete,
-  schoolId
+  schoolId,
+  schoolData
 }) => {
-  const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
-  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  // Create a new empty event
-  const createNewEvent = (): AcademicEvent => ({
-    id: Math.random().toString(36).substr(2, 9),
-    event_name: '',
-    event_type: 'Event',
-    start_date: '',
-    end_date: '',
-    description: ''
+  
+  // Initialize with existing data or defaults
+  const [academicYear, setAcademicYear] = useState({
+    start_date: schoolData.academic_year_start || '',
+    end_date: schoolData.academic_year_end || '',
   });
 
+  const [termBreaks, setTermBreaks] = useState([
+    { name: 'Term 1', start_date: '', end_date: '' },
+    { name: 'Term 2', start_date: '', end_date: '' },
+    { name: 'Term 3', start_date: '', end_date: '' },
+  ]);
+
+  const [weeklyOffs, setWeeklyOffs] = useState<string[]>(
+    schoolData.weekly_offs || ['Sunday']
+  );
+
+  const [events, setEvents] = useState<AcademicEvent[]>(
+    schoolData.academicCalendar || []
+  );
+
+  const [newEvent, setNewEvent] = useState<AcademicEvent>({
+    event_name: '',
+    event_type: 'holiday',
+    start_date: '',
+    end_date: '',
+    description: '',
+  });
+
+  const eventTypeColors = {
+    holiday: 'bg-red-100 text-red-800',
+    exam: 'bg-blue-100 text-blue-800',
+    event: 'bg-green-100 text-green-800',
+    break: 'bg-yellow-100 text-yellow-800',
+  };
+
+  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
   const addEvent = () => {
-    setAcademicEvents(prev => [...prev, createNewEvent()]);
-  };
-
-  const updateEvent = (id: string, field: keyof AcademicEvent, value: string) => {
-    setAcademicEvents(prev => prev.map(event => 
-      event.id === id ? { ...event, [field]: value } : event
-    ));
-  };
-
-  const removeEvent = (id: string) => {
-    setAcademicEvents(prev => prev.filter(event => event.id !== id));
-  };
-
-  const validateAndSave = async () => {
-    console.log('Academic Calendar Step - schoolId received:', schoolId);
-    
-    // Validate school ID is a proper UUID
-    if (!schoolId || !isValidUUID(schoolId)) {
+    if (!newEvent.event_name || !newEvent.start_date || !newEvent.end_date) {
       toast({
-        title: "❌ Invalid School ID", 
-        description: "School ID is missing or invalid. Please complete Step 1 first.",
+        title: "Error",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
 
-    // Filter out events with empty names
-    const validEvents = academicEvents.filter(event => event.event_name.trim());
-    
-    if (validEvents.length === 0) {
+    setEvents([...events, { ...newEvent, id: Date.now().toString() }]);
+    setNewEvent({
+      event_name: '',
+      event_type: 'holiday',
+      start_date: '',
+      end_date: '',
+      description: '',
+    });
+  };
+
+  const removeEvent = (index: number) => {
+    setEvents(events.filter((_, i) => i !== index));
+  };
+
+  const toggleWeeklyOff = (day: string) => {
+    setWeeklyOffs(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day]
+    );
+  };
+
+  const saveAcademicCalendar = async () => {
+    if (!schoolId) {
       toast({
-        title: "⚠️ No Events",
-        description: "Please add at least one academic event to continue.",
+        title: "Error",
+        description: "School ID is required",
         variant: "destructive",
       });
       return;
     }
 
-    setLoading(true);
     try {
-      // Prepare events for database insertion
-      const eventsForDB = validEvents.map(event => ({
-        school_id: schoolId, // This is now guaranteed to be a valid UUID
-        event_name: event.event_name.trim(),
-        event_type: event.event_type,
-        start_date: event.start_date,
-        end_date: event.end_date || event.start_date,
-        description: event.description.trim() || null
-      }));
+      // Prepare all events including term breaks
+      const allEvents = [
+        ...events,
+        ...termBreaks
+          .filter(term => term.start_date && term.end_date)
+          .map(term => ({
+            event_name: `${term.name} Break`,
+            event_type: 'break' as const,
+            start_date: term.start_date,
+            end_date: term.end_date,
+            description: `Academic ${term.name} break period`,
+            school_id: schoolId,
+          }))
+      ];
 
-      console.log('Saving academic events with valid UUID school_id:', schoolId, eventsForDB);
+      if (allEvents.length > 0) {
+        // Use type assertion since types haven't been updated yet
+        const { error } = await (supabase as any)
+          .from('academic_calendar')
+          .upsert(allEvents.map(event => ({
+            ...event,
+            school_id: schoolId,
+          })));
 
-      // Insert events into database
-      const { error } = await supabase
-        .from('academic_calendar')
-        .insert(eventsForDB);
-
-      if (error) {
-        console.error('Database error:', error);
-        throw new Error(`Failed to save events: ${error.message}`);
+        if (error) throw error;
       }
 
-      toast({
-        title: "✅ Success!",
-        description: `${validEvents.length} academic events saved successfully.`,
-        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-      });
+      const calendarData = {
+        academicCalendar: events,
+        academic_year_start: academicYear.start_date,
+        academic_year_end: academicYear.end_date,
+        term_breaks: termBreaks,
+        weekly_offs: weeklyOffs,
+      };
 
-      // Pass data to next step
-      onStepComplete({ academicCalendar: validEvents });
+      onStepComplete(calendarData);
+      toast({
+        title: "Success",
+        description: "Academic calendar configured successfully!",
+      });
       onNext();
 
     } catch (error) {
       console.error('Error saving academic calendar:', error);
       toast({
-        title: "❌ Save Failed",
-        description: error instanceof Error ? error.message : "Failed to save academic calendar. Please try again.",
+        title: "Error",
+        description: "Failed to save academic calendar",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <div className="space-y-8">
       <div className="text-center space-y-2">
-        <CalendarDays className="h-12 w-12 text-indigo-600 mx-auto" />
-        <h2 className="text-3xl font-bold text-gray-800">Academic Calendar Setup</h2>
-        <p className="text-gray-600">Define your school's academic events, terms, and important dates</p>
+        <CalendarDays className="h-12 w-12 text-blue-600 mx-auto" />
+        <h2 className="text-2xl font-bold text-gray-800">Academic Calendar Setup</h2>
+        <p className="text-gray-600">Configure your school's academic year, terms, and important events</p>
       </div>
 
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
-        <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-lg">
-          <CardTitle className="text-xl text-gray-800 flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Academic Events
+      {/* Academic Year */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-blue-600" />
+            Academic Year Period
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6 p-6">
-          {academicEvents.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No academic events added yet. Click "Add Event" to get started.</p>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="start_date">Academic Year Start</Label>
+            <Input
+              id="start_date"
+              type="date"
+              value={academicYear.start_date}
+              onChange={(e) => setAcademicYear(prev => ({ ...prev, start_date: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="end_date">Academic Year End</Label>
+            <Input
+              id="end_date"
+              type="date"
+              value={academicYear.end_date}
+              onChange={(e) => setAcademicYear(prev => ({ ...prev, end_date: e.target.value }))}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Term Breaks */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-purple-600" />
+            Term Break Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {termBreaks.map((term, index) => (
+              <div key={index} className="space-y-3 p-4 border rounded-lg">
+                <h4 className="font-semibold text-gray-700">{term.name}</h4>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Start Date"
+                    type="date"
+                    value={term.start_date}
+                    onChange={(e) => {
+                      const updated = [...termBreaks];
+                      updated[index].start_date = e.target.value;
+                      setTermBreaks(updated);
+                    }}
+                  />
+                  <Input
+                    placeholder="End Date"
+                    type="date"
+                    value={term.end_date}
+                    onChange={(e) => {
+                      const updated = [...termBreaks];
+                      updated[index].end_date = e.target.value;
+                      setTermBreaks(updated);
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Weekly Offs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Off Days</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {weekDays.map(day => (
+              <Button
+                key={day}
+                variant={weeklyOffs.includes(day) ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleWeeklyOff(day)}
+              >
+                {day}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add New Event */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-green-600" />
+            Add Academic Events
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <Label>Event Name</Label>
+              <Input
+                value={newEvent.event_name}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, event_name: e.target.value }))}
+                placeholder="e.g., Sports Day"
+              />
             </div>
-          ) : (
-            <div className="space-y-4">
-              {academicEvents.map((event, index) => (
-                <Card key={event.id} className="border border-gray-200 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold text-gray-700 flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Event {index + 1}
-                      </h4>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeEvent(event.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Event Name *</Label>
-                        <Input
-                          value={event.event_name}
-                          onChange={(e) => updateEvent(event.id, 'event_name', e.target.value)}
-                          placeholder="Enter event name"
-                          className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Event Type *</Label>
-                        <select
-                          value={event.event_type}
-                          onChange={(e) => updateEvent(event.id, 'event_type', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:border-indigo-500 focus:ring-indigo-500"
-                        >
-                          {EVENT_TYPES.map(type => (
-                            <option key={type} value={type}>{type}</option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          Start Date *
-                        </Label>
-                        <Input
-                          type="date"
-                          value={event.start_date}
-                          onChange={(e) => updateEvent(event.id, 'start_date', e.target.value)}
-                          className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          End Date
-                        </Label>
-                        <Input
-                          type="date"
-                          value={event.end_date}
-                          onChange={(e) => updateEvent(event.id, 'end_date', e.target.value)}
-                          className="border-gray-300 focus:border-red-500 focus:ring-red-500"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 space-y-2">
-                      <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Description
-                      </Label>
-                      <Input
-                        value={event.description}
-                        onChange={(e) => updateEvent(event.id, 'description', e.target.value)}
-                        placeholder="Enter event description (optional)"
-                        className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div>
+              <Label>Event Type</Label>
+              <select
+                className="w-full p-2 border rounded-md"
+                value={newEvent.event_type}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, event_type: e.target.value as any }))}
+              >
+                <option value="holiday">Holiday</option>
+                <option value="exam">Exam</option>
+                <option value="event">Event</option>
+                <option value="break">Break</option>
+              </select>
             </div>
-          )}
-          
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addEvent}
-            className="w-full flex items-center gap-2 py-3 border-dashed border-2 border-gray-300 hover:border-indigo-500 hover:bg-indigo-50"
-          >
-            <Plus className="h-5 w-5" />
-            Add Academic Event
+            <div>
+              <Label>Start Date</Label>
+              <Input
+                type="date"
+                value={newEvent.start_date}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, start_date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>End Date</Label>
+              <Input
+                type="date"
+                value={newEvent.end_date}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, end_date: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Textarea
+              value={newEvent.description}
+              onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Optional event description"
+            />
+          </div>
+          <Button onClick={addEvent} className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Event
           </Button>
         </CardContent>
       </Card>
 
-      <div className="flex justify-between pt-6 border-t">
-        <Button 
-          onClick={onPrevious}
-          variant="outline"
-          className="px-6 py-2"
-        >
-          ← Previous: School Info
-        </Button>
-        
-        <Button 
-          onClick={validateAndSave}
-          disabled={loading || academicEvents.length === 0}
-          className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-        >
-          {loading ? (
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              Saving...
+      {/* Events List */}
+      {events.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Configured Events</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {events.map((event, index) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Badge className={eventTypeColors[event.event_type]}>
+                      {event.event_type}
+                    </Badge>
+                    <div>
+                      <h4 className="font-semibold">{event.event_name}</h4>
+                      <p className="text-sm text-gray-600">
+                        {event.start_date} to {event.end_date}
+                      </p>
+                      {event.description && (
+                        <p className="text-xs text-gray-500">{event.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeEvent(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
-          ) : (
-            'Next: Infrastructure →'
-          )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Navigation */}
+      <div className="flex justify-between pt-6">
+        <Button variant="outline" onClick={onPrevious}>
+          ← Previous
+        </Button>
+        <Button onClick={saveAcademicCalendar}>
+          Next: Infrastructure Setup →
         </Button>
       </div>
     </div>

@@ -5,12 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Building, Plus, Trash2, Users, FlaskConical, Laptop, MapPin, Wand2 } from "lucide-react";
+import { Building, Plus, Trash2, Users, FlaskConical, Laptop, MapPin } from "lucide-react";
 import { BaseStepProps } from '@/types/setup';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AIInput } from "@/components/ui/ai-input";
-import { useGroqSuggestions } from "@/hooks/useGroqSuggestions";
 
 interface Room {
   room_name: string;
@@ -18,13 +16,6 @@ interface Room {
   capacity: number;
   grade_assignment: string;
   equipment: { name: string; quantity: number }[];
-}
-
-interface InfrastructureOverview {
-  totalRooms: number;
-  schoolType: string;
-  buildingLevels: number;
-  specialFacilities: string[];
 }
 
 export const InfrastructureStep: React.FC<BaseStepProps> = ({
@@ -35,16 +26,7 @@ export const InfrastructureStep: React.FC<BaseStepProps> = ({
   schoolData
 }) => {
   const { toast } = useToast();
-  const { getSuggestions } = useGroqSuggestions();
   
-  const [overview, setOverview] = useState<InfrastructureOverview>({
-    totalRooms: schoolData.totalRooms || 0,
-    schoolType: schoolData.schoolType || 'Primary School',
-    buildingLevels: schoolData.buildingLevels || 1,
-    specialFacilities: schoolData.specialFacilities || [],
-  });
-  
-  const [showDetailedSetup, setShowDetailedSetup] = useState(false);
   const [rooms, setRooms] = useState<Room[]>(
     schoolData.infrastructure || []
   );
@@ -59,36 +41,27 @@ export const InfrastructureStep: React.FC<BaseStepProps> = ({
 
   const [newEquipment, setNewEquipment] = useState({ name: '', quantity: 1 });
 
-  const schoolTypes = ['Primary School', 'Secondary School', 'High School', 'International School', 'Vocational School'];
-  const facilityTypes = ['Library', 'Computer Lab', 'Science Lab', 'Sports Ground', 'Auditorium', 'Cafeteria', 'Art Room', 'Music Room'];
+  const roomTypes = [
+    'Regular Classroom',
+    'Science Lab',
+    'Computer Lab',
+    'Math Lab',
+    'Library',
+    'Indoor Gym',
+    'Outdoor Playground',
+    'Sports Ground',
+    'Auditorium',
+    'Cafeteria',
+    'Principal Office',
+    'Staff Room',
+    'Art Room',
+    'Music Room',
+  ];
 
-  const generateRoomSuggestions = async () => {
-    try {
-      const prompt = `For a ${overview.schoolType} with ${overview.totalRooms} total rooms across ${overview.buildingLevels} floors, suggest specific room names, types, and capacities. Include regular classrooms, labs, and facilities.`;
-      const suggestions = await getSuggestions(prompt, overview, 'room_types');
-      
-      if (suggestions.length > 0) {
-        const generatedRooms = suggestions.slice(0, overview.totalRooms).map((roomName: string, index: number) => ({
-          room_name: roomName,
-          room_type: roomName.includes('Lab') ? 'Science Lab' : roomName.includes('Computer') ? 'Computer Lab' : 'Regular Classroom',
-          capacity: roomName.includes('Lab') ? 25 : roomName.includes('Auditorium') ? 200 : 30,
-          grade_assignment: '',
-          equipment: [],
-        }));
-        
-        setRooms(generatedRooms);
-        setShowDetailedSetup(true);
-        
-        toast({
-          title: "✨ AI Generated Room Layout!",
-          description: `Created ${generatedRooms.length} room suggestions based on your school specs.`,
-          className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
-        });
-      }
-    } catch (error) {
-      console.log('Failed to generate room suggestions:', error);
-    }
-  };
+  const commonEquipment = [
+    'Projector', 'Whiteboard', 'Air Conditioner', 'Fan', 'Desk', 'Chair',
+    'Computer', 'Printer', 'Microscope', 'Beaker', 'Test Tube', 'Calculator',
+  ];
 
   const addEquipment = () => {
     if (!newEquipment.name) return;
@@ -143,6 +116,7 @@ export const InfrastructureStep: React.FC<BaseStepProps> = ({
 
     try {
       if (rooms.length > 0) {
+        // Use type assertion since types haven't been updated yet
         const { error } = await (supabase as any)
           .from('infrastructure')
           .upsert(rooms.map(room => ({
@@ -153,13 +127,7 @@ export const InfrastructureStep: React.FC<BaseStepProps> = ({
         if (error) throw error;
       }
 
-      onStepComplete({ 
-        infrastructure: rooms,
-        totalRooms: overview.totalRooms,
-        schoolType: overview.schoolType,
-        buildingLevels: overview.buildingLevels,
-        specialFacilities: overview.specialFacilities,
-      });
+      onStepComplete({ infrastructure: rooms });
       toast({
         title: "Success",
         description: "Infrastructure configured successfully!",
@@ -191,137 +159,13 @@ export const InfrastructureStep: React.FC<BaseStepProps> = ({
     return 'bg-orange-100 text-orange-800';
   };
 
-  if (!showDetailedSetup) {
-    return (
-      <div className="space-y-8">
-        <div className="text-center space-y-2">
-          <Building className="h-12 w-12 text-blue-600 mx-auto" />
-          <h2 className="text-2xl font-bold text-gray-800">Infrastructure Overview</h2>
-          <p className="text-gray-600">First, let's understand your school's basic infrastructure</p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>School Infrastructure Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Label>Total Number of Rooms</Label>
-                <Input
-                  type="number"
-                  value={overview.totalRooms}
-                  onChange={(e) => setOverview(prev => ({ ...prev, totalRooms: parseInt(e.target.value) || 0 }))}
-                  placeholder="e.g., 25"
-                  min="1"
-                />
-              </div>
-              <div>
-                <Label>School Type</Label>
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={overview.schoolType}
-                  onChange={(e) => setOverview(prev => ({ ...prev, schoolType: e.target.value }))}
-                >
-                  {schoolTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>Building Levels/Floors</Label>
-                <Input
-                  type="number"
-                  value={overview.buildingLevels}
-                  onChange={(e) => setOverview(prev => ({ ...prev, buildingLevels: parseInt(e.target.value) || 1 }))}
-                  placeholder="e.g., 3"
-                  min="1"
-                />
-              </div>
-              <div>
-                <Label>Special Facilities</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {facilityTypes.map(facility => (
-                    <Button
-                      key={facility}
-                      type="button"
-                      variant={overview.specialFacilities.includes(facility) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setOverview(prev => ({
-                          ...prev,
-                          specialFacilities: prev.specialFacilities.includes(facility)
-                            ? prev.specialFacilities.filter(f => f !== facility)
-                            : [...prev.specialFacilities, facility]
-                        }));
-                      }}
-                    >
-                      {facility}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4">
-              <Button 
-                onClick={generateRoomSuggestions}
-                disabled={overview.totalRooms === 0}
-                className="w-full flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-              >
-                <Wand2 className="h-5 w-5" />
-                Generate AI Room Layout ({overview.totalRooms} rooms)
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-between pt-6">
-          <Button variant="outline" onClick={onPrevious}>
-            ← Previous
-          </Button>
-          <Button 
-            onClick={() => setShowDetailedSetup(true)}
-            disabled={overview.totalRooms === 0}
-          >
-            Continue to Room Details →
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       <div className="text-center space-y-2">
         <Building className="h-12 w-12 text-blue-600 mx-auto" />
-        <h2 className="text-2xl font-bold text-gray-800">Room Configuration</h2>
-        <p className="text-gray-600">Configure individual rooms and their equipment</p>
+        <h2 className="text-2xl font-bold text-gray-800">Infrastructure Setup</h2>
+        <p className="text-gray-600">Configure your school's rooms, facilities, and equipment</p>
       </div>
-
-      {/* Overview Summary */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-blue-600">{overview.totalRooms}</div>
-              <div className="text-sm text-gray-600">Total Rooms</div>
-            </div>
-            <div>
-              <div className="text-lg font-semibold text-green-600">{overview.schoolType}</div>
-              <div className="text-sm text-gray-600">School Type</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-purple-600">{overview.buildingLevels}</div>
-              <div className="text-sm text-gray-600">Floors</div>
-            </div>
-            <div>
-              <div className="text-lg font-semibold text-orange-600">{overview.specialFacilities.length}</div>
-              <div className="text-sm text-gray-600">Special Facilities</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Add New Room */}
       <Card>
@@ -335,23 +179,23 @@ export const InfrastructureStep: React.FC<BaseStepProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label>Room Name</Label>
-              <AIInput
+              <Input
                 value={newRoom.room_name}
-                onChange={(value) => setNewRoom(prev => ({ ...prev, room_name: value }))}
+                onChange={(e) => setNewRoom(prev => ({ ...prev, room_name: e.target.value }))}
                 placeholder="e.g., Room 101"
-                suggestionType="room_types"
-                context={{ schoolType: overview.schoolType }}
               />
             </div>
             <div>
               <Label>Room Type</Label>
-              <AIInput
+              <select
+                className="w-full p-2 border rounded-md"
                 value={newRoom.room_type}
-                onChange={(value) => setNewRoom(prev => ({ ...prev, room_type: value }))}
-                placeholder="e.g., Science Lab"
-                suggestionType="room_types"
-                context={{ schoolType: overview.schoolType }}
-              />
+                onChange={(e) => setNewRoom(prev => ({ ...prev, room_type: e.target.value }))}
+              >
+                {roomTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
             </div>
             <div>
               <Label>Capacity</Label>
@@ -375,14 +219,16 @@ export const InfrastructureStep: React.FC<BaseStepProps> = ({
           <div className="space-y-3">
             <Label>Equipment</Label>
             <div className="flex gap-2">
-              <AIInput
+              <select
+                className="flex-1 p-2 border rounded-md"
                 value={newEquipment.name}
-                onChange={(value) => setNewEquipment(prev => ({ ...prev, name: value }))}
-                placeholder="Select equipment"
-                suggestionType="room_types"
-                context={{ roomType: newRoom.room_type }}
-                className="flex-1"
-              />
+                onChange={(e) => setNewEquipment(prev => ({ ...prev, name: e.target.value }))}
+              >
+                <option value="">Select equipment</option>
+                {commonEquipment.map(eq => (
+                  <option key={eq} value={eq}>{eq}</option>
+                ))}
+              </select>
               <Input
                 type="number"
                 className="w-20"
