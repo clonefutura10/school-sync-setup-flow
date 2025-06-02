@@ -61,16 +61,22 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
     end_date: ''
   });
 
+  // Fixed event type change handler to prevent React error
   const handleEventTypeChange = async (eventType: string) => {
-    setNewEvent(prev => ({ ...prev, event_type: eventType }));
+    // Update state safely
+    setNewEvent(prev => ({ 
+      ...prev, 
+      event_type: eventType,
+      description: prev.description // Keep existing description initially
+    }));
     
-    // Generate AI description when event type is selected
-    if (eventType) {
+    // Generate AI description when event type is selected (async operation)
+    if (eventType && eventType.trim() !== '') {
       try {
         const prompt = `Generate a brief description for a school academic calendar event of type "${eventType}". Keep it under 50 words and make it relevant for school calendar planning.`;
         const suggestions = await getSuggestions(prompt, { eventType }, 'academic_events');
         
-        if (suggestions.length > 0) {
+        if (suggestions && suggestions.length > 0) {
           setNewEvent(prev => ({ ...prev, description: suggestions[0] }));
         }
       } catch (error) {
@@ -250,7 +256,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
               />
             </div>
             <div>
-              <Label>Start</Label>
+              <Label>Start Date</Label>
               <Input
                 type="date"
                 value={newTermBreak.start_date}
@@ -258,7 +264,7 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
               />
             </div>
             <div>
-              <Label>End</Label>
+              <Label>End Date</Label>
               <Input
                 type="date"
                 value={newTermBreak.end_date}

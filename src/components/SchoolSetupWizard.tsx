@@ -79,6 +79,8 @@ export const SchoolSetupWizard = () => {
   };
 
   const handleStepComplete = async (stepData: any) => {
+    console.log('Step completed with data:', stepData);
+    
     // Accumulate all setup data
     const updatedSchoolData = { ...schoolData, ...stepData };
     setSchoolData(updatedSchoolData);
@@ -87,6 +89,7 @@ export const SchoolSetupWizard = () => {
     let newSchoolId = schoolId;
     if (stepData.schoolId && !schoolId) {
       newSchoolId = stepData.schoolId;
+      console.log('Setting new school ID:', newSchoolId);
     }
     
     // Save progress with updated data

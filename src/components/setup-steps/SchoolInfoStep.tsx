@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BaseStepProps } from '@/types/setup';
-import { GraduationCap, MapPin, Mail, Phone, User, Calendar, Eye, Wand2 } from "lucide-react";
+import { GraduationCap, MapPin, Mail, Phone, User, Calendar, Eye, Wand2, Lock } from "lucide-react";
+import { AIInput } from "@/components/ui/ai-input";
 
 const SAMPLE_SCHOOL_DATA = {
   name: 'Springfield Elementary School',
@@ -44,6 +46,10 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
     academic_year_end: '',
     timezone: 'UTC'
   });
+  
+  // Authentication state
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -70,9 +76,19 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
     });
   };
 
-  const handleSubmit = async () => {
-    console.log('Starting school data submission:', schoolData);
+  const handleSignUpAndSubmit = async () => {
+    console.log('Starting signup and school data submission');
     
+    // Validate required fields
+    if (!authEmail.trim() || !authPassword.trim()) {
+      toast({
+        title: "❌ Validation Error",
+        description: "Email and password are required for signup.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!schoolData.name.trim()) {
       toast({
         title: "❌ Validation Error",
@@ -84,7 +100,28 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
     setLoading(true);
     try {
-      // Prepare school data for database
+      // Step 1: Sign up the user
+      console.log('Attempting user signup...');
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: authEmail,
+        password: authPassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/setup`
+        }
+      });
+
+      if (authError) {
+        console.error('Signup error:', authError);
+        throw new Error(`Signup failed: ${authError.message}`);
+      }
+
+      if (!authData.user) {
+        throw new Error('No user data returned after signup');
+      }
+
+      console.log('User signed up successfully:', authData.user.id);
+
+      // Step 2: Create school record
       const schoolInsertData = {
         name: schoolData.name.trim(),
         address: schoolData.address.trim() || null,
@@ -98,10 +135,11 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         school_type: schoolData.school_type,
         academic_year_start: schoolData.academic_year_start || null,
         academic_year_end: schoolData.academic_year_end || null,
-        timezone: schoolData.timezone
+        timezone: schoolData.timezone,
+        created_by: authData.user.id
       };
 
-      console.log('Inserting school data:', schoolInsertData);
+      console.log('Creating school record:', schoolInsertData);
 
       const { data: insertedSchool, error: insertError } = await supabase
         .from('schools')
@@ -110,7 +148,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         .single();
 
       if (insertError) {
-        console.error('Database insert error:', insertError);
+        console.error('School creation error:', insertError);
         throw new Error(`Failed to save school information: ${insertError.message}`);
       }
 
@@ -121,8 +159,8 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
       console.log('School created successfully:', insertedSchool);
 
       toast({
-        title: "✅ Success!",
-        description: "School information saved successfully!",
+        title: "✅ Welcome!",
+        description: "Account created and school information saved successfully!",
         className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
 
@@ -136,10 +174,10 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
       onNext();
 
     } catch (error) {
-      console.error('Error saving school information:', error);
+      console.error('Error during signup and school creation:', error);
       toast({
-        title: "❌ Save Failed",
-        description: error instanceof Error ? error.message : "Failed to save school information. Please try again.",
+        title: "❌ Registration Failed",
+        description: error instanceof Error ? error.message : "Failed to create account and save school information. Please try again.",
         variant: "destructive",
         className: "fixed top-4 right-4 w-96",
       });
@@ -154,8 +192,8 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         <div>
           <div className="text-center space-y-2">
             <GraduationCap className="h-12 w-12 text-blue-600 mx-auto" />
-            <h2 className="text-3xl font-bold text-gray-800">School Information</h2>
-            <p className="text-gray-600">Enter your school's basic details to get started</p>
+            <h2 className="text-3xl font-bold text-gray-800">Create Your School Account</h2>
+            <p className="text-gray-600">Sign up and enter your school's details to get started</p>
           </div>
         </div>
         <Button
@@ -169,9 +207,50 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         </Button>
       </div>
 
+      {/* Authentication Section */}
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-blue-50">
+        <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-lg">
+          <CardTitle className="text-xl text-gray-800 flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Account Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email Address *
+              </Label>
+              <Input
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="Enter your email address"
+                className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Password *
+              </Label>
+              <Input
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Create a password"
+                className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* School Information Section */}
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-lg">
-          <CardTitle className="text-xl text-gray-800">Basic Information</CardTitle>
+          <CardTitle className="text-xl text-gray-800">School Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -180,10 +259,11 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
                 <GraduationCap className="h-4 w-4" />
                 School Name *
               </Label>
-              <Input
+              <AIInput
                 value={schoolData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                onChange={(value) => handleInputChange('name', value)}
                 placeholder="Enter school name"
+                suggestionType="school_names"
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -230,12 +310,12 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                Email Address
+                School Email
               </Label>
               <Input
                 value={schoolData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="Enter email address"
+                placeholder="Enter school email address"
                 className="border-gray-300 focus:border-red-500 focus:ring-red-500"
               />
             </div>
@@ -336,17 +416,17 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
       <div className="flex justify-end pt-6 border-t">
         <Button 
-          onClick={handleSubmit} 
+          onClick={handleSignUpAndSubmit} 
           disabled={loading}
           className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 disabled:opacity-50"
         >
           {loading ? (
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              Saving...
+              Creating Account...
             </div>
           ) : (
-            'Save & Continue →'
+            'Sign Up & Continue →'
           )}
         </Button>
       </div>
