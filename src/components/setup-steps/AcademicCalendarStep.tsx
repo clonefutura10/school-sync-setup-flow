@@ -70,6 +70,8 @@ export const AcademicCalendarStep: React.FC<BaseStepProps> = ({
   };
 
   const validateAndSave = async () => {
+    console.log('Academic Calendar Step - schoolId received:', schoolId);
+    
     // Validate school ID is a proper UUID
     if (!schoolId || !isValidUUID(schoolId)) {
       toast({

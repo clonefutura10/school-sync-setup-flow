@@ -204,7 +204,7 @@ export const SchoolSetupWizard = () => {
       onNext: handleNext,
       onPrevious: handlePrevious,
       onStepComplete: handleStepComplete,
-      schoolId: currentSchoolId || 'mock-school-id',
+      schoolId: currentSchoolId,
       currentStep,
       totalSteps: STEPS.length,
       schoolData,
