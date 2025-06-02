@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,6 +200,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
           <CardTitle className="text-xl text-gray-800">School Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">

@@ -48,9 +48,9 @@ export const SchoolSetupWizard = () => {
   const { progress, loading: progressLoading, saveProgress } = useSetupProgress();
   const [schoolData, setSchoolData] = useState({});
   const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
 
-  const currentStep = progress.currentStep;
   const progressPercent = ((currentStep - 1) / (STEPS.length - 1)) * 100;
 
   useEffect(() => {
@@ -83,6 +83,9 @@ export const SchoolSetupWizard = () => {
         }
       }
     }
+
+    // Set current step from progress
+    setCurrentStep(progress.currentStep || 1);
   }, [progress]);
 
   const handleNext = () => {
@@ -90,10 +93,13 @@ export const SchoolSetupWizard = () => {
       const newStep = currentStep + 1;
       console.log(`WIZARD: Moving from step ${currentStep} to step ${newStep}`);
       
-      // Force immediate state update and save
+      // Update local state first
+      setCurrentStep(newStep);
+      
+      // Then save to progress
       saveProgress({ 
         currentStep: newStep,
-        completedSteps: [...progress.completedSteps, currentStep]
+        completedSteps: [...(progress.completedSteps || []), currentStep]
       });
       
       console.log(`WIZARD: Step changed to ${newStep}`);
@@ -102,8 +108,10 @@ export const SchoolSetupWizard = () => {
 
   const handlePrevious = () => {
     if (currentStep > 1) {
-      console.log(`Moving back to step ${currentStep - 1}`);
-      saveProgress({ currentStep: currentStep - 1 });
+      const newStep = currentStep - 1;
+      console.log(`Moving back to step ${newStep}`);
+      setCurrentStep(newStep);
+      saveProgress({ currentStep: newStep });
     }
   };
 
@@ -127,7 +135,7 @@ export const SchoolSetupWizard = () => {
     await saveProgress({
       stepData: updatedSchoolData,
       schoolId: newSchoolId,
-      completedSteps: [...progress.completedSteps, currentStep]
+      completedSteps: [...(progress.completedSteps || []), currentStep]
     });
 
     // Store individual step data in localStorage for compatibility
@@ -160,6 +168,10 @@ export const SchoolSetupWizard = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
+      // Reset to step 1 on sign out
+      setCurrentStep(1);
+      setSchoolData({});
+      setCurrentSchoolId(null);
       toast({
         title: "Signed out",
         description: "You have been signed out successfully.",
@@ -192,7 +204,7 @@ export const SchoolSetupWizard = () => {
       onNext: handleNext,
       onPrevious: handlePrevious,
       onStepComplete: handleStepComplete,
-      schoolId: currentSchoolId || 'mock-school-id', // Always provide a fallback
+      schoolId: currentSchoolId || 'mock-school-id',
       currentStep,
       totalSteps: STEPS.length,
       schoolData,
