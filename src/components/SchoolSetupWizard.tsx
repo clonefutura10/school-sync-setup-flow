@@ -126,7 +126,8 @@ export const SchoolSetupWizard = () => {
       newSchoolId = stepData.schoolId;
       setCurrentSchoolId(newSchoolId);
       localStorage.setItem('currentSchoolId', newSchoolId);
-      console.log('Setting new school ID:', newSchoolId);
+      console.log('WIZARD: Setting new school ID:', newSchoolId);
+      console.log('WIZARD: School ID type:', typeof newSchoolId);
     }
     
     // Always store in localStorage as backup
@@ -199,6 +200,9 @@ export const SchoolSetupWizard = () => {
 
   const renderCurrentStep = () => {
     const CurrentStepComponent = STEPS[currentStep - 1].component;
+    
+    console.log(`WIZARD: Rendering step ${currentStep} with schoolId:`, currentSchoolId);
+    console.log(`WIZARD: SchoolId type:`, typeof currentSchoolId);
     
     const baseProps: BaseStepProps = {
       onNext: handleNext,

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BaseStepProps } from '@/types/setup';
 import { GraduationCap, School, User, Mail, Phone, MapPin, Calendar, Users, Target, Clock } from "lucide-react";
+import { AIInput } from "@/components/ui/ai-input";
 
 export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   onNext,
@@ -95,6 +97,8 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
       const schoolId = schoolData.id;
       console.log('School created successfully with ID:', schoolId);
+      console.log('School ID type:', typeof schoolId);
+      console.log('School ID value:', schoolId);
 
       toast({
         title: "✅ School Information Saved!",
@@ -102,7 +106,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
 
-      // Pass the data to parent component
+      // Pass the data to parent component with the actual UUID
       onStepComplete({ 
         schoolId: schoolId,
         ...formData 
@@ -144,10 +148,12 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
                 <School className="h-4 w-4" />
                 School Name *
               </Label>
-              <Input
+              <AIInput
                 value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                onChange={(value) => handleInputChange('name', value)}
                 placeholder="Enter school name"
+                suggestionType="school_names"
+                context={{ location: formData.address }}
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -157,10 +163,12 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
                 <User className="h-4 w-4" />
                 Principal Name
               </Label>
-              <Input
+              <AIInput
                 value={formData.principal_name}
-                onChange={(e) => handleInputChange('principal_name', e.target.value)}
+                onChange={(value) => handleInputChange('principal_name', value)}
                 placeholder="Enter principal's name"
+                suggestionType="teacher_data"
+                context={{ field: 'first_name' }}
                 className="border-gray-300 focus:border-green-500 focus:ring-green-500"
               />
             </div>
