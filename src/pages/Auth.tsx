@@ -8,8 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Lock, User, School, Mail } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/components/AuthProvider";
 
 const Auth = () => {
+  const { user, loading } = useAuthContext();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +22,12 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // If user is already logged in, redirect to setup
+    if (!loading && user) {
+      navigate('/', replace: true);
+      return;
+    }
+
     // Handle email confirmation from URL hash
     const handleHashChange = async () => {
       const hash = window.location.hash;
@@ -35,23 +43,25 @@ const Auth = () => {
             description: "Your account has been verified successfully.",
             className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
           });
-          navigate('/setup');
+          navigate('/');
         }
       }
     };
 
     handleHashChange();
+  }, [navigate, toast, user, loading]);
 
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        navigate('/setup');
-      }
-    };
-    
-    checkUser();
-  }, [navigate, toast]);
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +82,7 @@ const Auth = () => {
           className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
         });
 
-        navigate('/setup');
+        navigate('/');
       } else {
         // Get the current origin and use it for redirect
         const currentOrigin = window.location.origin;
