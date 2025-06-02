@@ -303,6 +303,39 @@ export type Database = {
         }
         Relationships: []
       }
+      setup_progress: {
+        Row: {
+          completed_steps: number[] | null
+          created_at: string
+          current_step: number
+          id: string
+          school_id: string | null
+          step_data: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_steps?: number[] | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          school_id?: string | null
+          step_data?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_steps?: number[] | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          school_id?: string | null
+          step_data?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           address: string | null

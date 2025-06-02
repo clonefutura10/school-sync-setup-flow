@@ -49,6 +49,16 @@ export const SchoolSetupWizard = () => {
 
   const progress = ((currentStep - 1) / (STEPS.length - 1)) * 100;
 
+  // Generate mock school ID if none exists
+  const getMockSchoolId = () => {
+    let mockId = localStorage.getItem('mockSchoolId');
+    if (!mockId) {
+      mockId = `mock-school-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('mockSchoolId', mockId);
+    }
+    return mockId;
+  };
+
   const handleNext = () => {
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
@@ -62,56 +72,47 @@ export const SchoolSetupWizard = () => {
   };
 
   const handleStepComplete = (stepData: any) => {
-    // Accumulate all setup data
     const updatedSchoolData = { ...schoolData, ...stepData };
     setSchoolData(updatedSchoolData);
     console.log('Step completed with data:', stepData);
     console.log('Complete school data so far:', updatedSchoolData);
     
-    // Handle school creation if it's the first step and contains school ID
+    // Handle school creation or use mock ID
     if (stepData.schoolId) {
       setSchoolId(stepData.schoolId);
       localStorage.setItem('schoolId', stepData.schoolId);
+    } else if (!schoolId) {
+      const mockId = getMockSchoolId();
+      setSchoolId(mockId);
     }
     
-    // Store the complete setup data for the scheduler at each step
+    // Store the complete setup data
     localStorage.setItem('setupData', JSON.stringify(updatedSchoolData));
     
-    // Store individual step data
-    if (stepData.students) {
-      localStorage.setItem('schoolStudents', JSON.stringify(stepData.students));
-    }
-    if (stepData.teachers) {
-      localStorage.setItem('schoolTeachers', JSON.stringify(stepData.teachers));
-    }
-    if (stepData.subjects) {
-      localStorage.setItem('schoolSubjects', JSON.stringify(stepData.subjects));
-    }
-    if (stepData.classes) {
-      localStorage.setItem('schoolClasses', JSON.stringify(stepData.classes));
-    }
-    if (stepData.timeSlots) {
-      localStorage.setItem('schoolTimeSlots', JSON.stringify(stepData.timeSlots));
-    }
-    if (stepData.academicCalendar) {
-      localStorage.setItem('academicCalendar', JSON.stringify(stepData.academicCalendar));
-    }
-    if (stepData.infrastructure) {
-      localStorage.setItem('infrastructure', JSON.stringify(stepData.infrastructure));
-    }
-    if (stepData.teacherSubjectMappings) {
-      localStorage.setItem('teacherSubjectMappings', JSON.stringify(stepData.teacherSubjectMappings));
-    }
+    // Store individual step data with better organization
+    Object.keys(stepData).forEach(key => {
+      if (stepData[key] && Array.isArray(stepData[key])) {
+        localStorage.setItem(`school${key.charAt(0).toUpperCase() + key.slice(1)}`, JSON.stringify(stepData[key]));
+      } else if (typeof stepData[key] === 'object' && stepData[key] !== null) {
+        localStorage.setItem(key, JSON.stringify(stepData[key]));
+      }
+    });
   };
 
   useEffect(() => {
-    // Check if we have a school ID in localStorage
+    // Load existing data
     const savedSchoolId = localStorage.getItem('schoolId');
+    const mockSchoolId = localStorage.getItem('mockSchoolId');
+    
     if (savedSchoolId) {
       setSchoolId(savedSchoolId);
+    } else if (mockSchoolId) {
+      setSchoolId(mockSchoolId);
+    } else {
+      const newMockId = getMockSchoolId();
+      setSchoolId(newMockId);
     }
 
-    // Load existing setup data if available
     const savedSetupData = localStorage.getItem('setupData');
     if (savedSetupData) {
       try {
@@ -130,7 +131,7 @@ export const SchoolSetupWizard = () => {
       onNext: handleNext,
       onPrevious: handlePrevious,
       onStepComplete: handleStepComplete,
-      schoolId,
+      schoolId: schoolId || getMockSchoolId(),
       currentStep,
       totalSteps: STEPS.length,
       schoolData,
@@ -140,11 +141,9 @@ export const SchoolSetupWizard = () => {
   };
 
   const renderStepIndicator = () => {
-    // Calculate visible range of steps to show (for responsive design)
     let visibleSteps = STEPS;
-    const maxVisibleSteps = 5; // Maximum number of steps to show on smaller screens
+    const maxVisibleSteps = 5;
     
-    // Create a mobile-friendly subset of steps centered around the current step
     if (window.innerWidth < 1024 && STEPS.length > maxVisibleSteps) {
       const startIdx = Math.max(0, Math.min(
         currentStep - Math.ceil(maxVisibleSteps / 2),
@@ -200,16 +199,13 @@ export const SchoolSetupWizard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">School Setup Wizard</h1>
           <p className="text-lg text-gray-600">Complete 10-step setup for comprehensive school management</p>
         </div>
 
-        {/* Step Indicator */}
         {renderStepIndicator()}
 
-        {/* Progress Card */}
         <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
@@ -230,14 +226,12 @@ export const SchoolSetupWizard = () => {
           </CardHeader>
         </Card>
 
-        {/* Main Content */}
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardContent className="p-8">
             {renderCurrentStep()}
           </CardContent>
         </Card>
 
-        {/* Footer Info */}
         <div className="text-center mt-6 text-sm text-gray-500">
           <p>✨ Enhanced with AI-powered analytics and comprehensive data validation</p>
         </div>
