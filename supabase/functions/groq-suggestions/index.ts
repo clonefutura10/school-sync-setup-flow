@@ -17,6 +17,10 @@ serve(async (req) => {
   try {
     const { prompt, type } = await req.json();
 
+    if (!groqApiKey) {
+      throw new Error('GROQ_API_KEY not configured');
+    }
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -28,7 +32,7 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: `You are a helpful assistant that provides suggestions for school setup. Return responses as JSON arrays or objects based on the request type. For ${type} requests, provide relevant suggestions.`
+            content: `You are a helpful assistant that provides suggestions for school setup. Return responses as JSON arrays or objects based on the request type. For ${type} requests, provide relevant suggestions. Always return valid JSON format.`
           },
           { role: 'user', content: prompt }
         ],
@@ -37,7 +41,16 @@ serve(async (req) => {
       }),
     });
 
+    if (!response.ok) {
+      throw new Error(`Groq API error: ${response.status}`);
+    }
+
     const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response from Groq API');
+    }
+    
     const content = data.choices[0].message.content;
     
     // Try to parse as JSON, fallback to text
