@@ -1,14 +1,13 @@
 
 import React from 'react';
 import { useAuthContext } from './AuthProvider';
-import Auth from '@/pages/Auth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuthContext();
+  const { loading } = useAuthContext();
 
   if (loading) {
     return (
@@ -21,9 +20,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (!user) {
-    return <Auth />;
-  }
-
+  // Always show children (setup wizard) regardless of auth status
   return <>{children}</>;
 };

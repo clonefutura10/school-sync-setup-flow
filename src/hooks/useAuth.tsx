@@ -33,6 +33,8 @@ export const useAuth = () => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    // Stay on the same page after sign out
+    window.location.href = '/';
   };
 
   return {
