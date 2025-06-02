@@ -100,10 +100,14 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
       };
       
       console.log('School data prepared with ID:', mockSchoolId);
+      console.log('Calling onStepComplete with data:', completeSchoolData);
       
       // Store in localStorage as backup
       localStorage.setItem('currentSchoolId', mockSchoolId);
       localStorage.setItem('schoolData', JSON.stringify(completeSchoolData));
+      
+      // Complete step with school data and ID
+      await onStepComplete(completeSchoolData);
       
       toast({
         title: "✅ Success!",
@@ -111,8 +115,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
 
-      // Complete step with school data and ID
-      onStepComplete(completeSchoolData);
+      console.log('Calling onNext to move to step 2');
       onNext();
       
     } catch (error) {
@@ -367,7 +370,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
               Processing...
             </div>
           ) : (
-            'Continue to Step 2 →'
+            'Sign Up & Continue →'
           )}
         </Button>
       </div>
