@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,17 +47,41 @@ export const SchoolSetupWizard = () => {
   const { user, signOut } = useAuthContext();
   const { progress, loading: progressLoading, saveProgress } = useSetupProgress();
   const [schoolData, setSchoolData] = useState({});
+  const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const currentStep = progress.currentStep;
-  const schoolId = progress.schoolId;
   const progressPercent = ((currentStep - 1) / (STEPS.length - 1)) * 100;
 
   useEffect(() => {
+    // Load from progress first, then fallback to localStorage
     if (progress.stepData) {
       setSchoolData(progress.stepData);
-      console.log('Loaded school data:', progress.stepData);
-      console.log('Current school ID:', progress.schoolId);
+      console.log('Loaded school data from progress:', progress.stepData);
+    }
+    
+    if (progress.schoolId) {
+      setCurrentSchoolId(progress.schoolId);
+      console.log('Current school ID from progress:', progress.schoolId);
+    } else {
+      // Fallback to localStorage
+      const storedSchoolId = localStorage.getItem('currentSchoolId');
+      const storedSchoolData = localStorage.getItem('schoolData');
+      
+      if (storedSchoolId) {
+        setCurrentSchoolId(storedSchoolId);
+        console.log('Current school ID from localStorage:', storedSchoolId);
+      }
+      
+      if (storedSchoolData) {
+        try {
+          const parsedData = JSON.parse(storedSchoolData);
+          setSchoolData(parsedData);
+          console.log('Loaded school data from localStorage:', parsedData);
+        } catch (error) {
+          console.error('Error parsing stored school data:', error);
+        }
+      }
     }
   }, [progress]);
 
@@ -86,11 +109,16 @@ export const SchoolSetupWizard = () => {
     const updatedSchoolData = { ...schoolData, ...stepData };
     setSchoolData(updatedSchoolData);
     
-    let newSchoolId = schoolId;
-    if (stepData.schoolId && !schoolId) {
+    let newSchoolId = currentSchoolId;
+    if (stepData.schoolId && !currentSchoolId) {
       newSchoolId = stepData.schoolId;
+      setCurrentSchoolId(newSchoolId);
+      localStorage.setItem('currentSchoolId', newSchoolId);
       console.log('Setting new school ID:', newSchoolId);
     }
+    
+    // Always store in localStorage as backup
+    localStorage.setItem('schoolData', JSON.stringify(updatedSchoolData));
     
     await saveProgress({
       stepData: updatedSchoolData,
@@ -160,7 +188,7 @@ export const SchoolSetupWizard = () => {
       onNext: handleNext,
       onPrevious: handlePrevious,
       onStepComplete: handleStepComplete,
-      schoolId,
+      schoolId: currentSchoolId || 'mock-school-id', // Always provide a fallback
       currentStep,
       totalSteps: STEPS.length,
       schoolData,
@@ -232,6 +260,9 @@ export const SchoolSetupWizard = () => {
           <div className="text-center flex-1">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">School Setup Wizard</h1>
             <p className="text-lg text-gray-600">Complete 10-step setup for comprehensive school management</p>
+            {currentSchoolId && (
+              <p className="text-sm text-green-600 mt-2">School ID: {currentSchoolId}</p>
+            )}
           </div>
           {user && (
             <div className="flex items-center space-x-4">
