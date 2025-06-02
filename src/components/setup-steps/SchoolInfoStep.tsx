@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +75,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (loading) return; // Prevent multiple submissions
+    if (loading) return;
     
     if (!schoolData.name.trim()) {
       toast({
@@ -118,10 +119,8 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
       console.log('Calling onNext to move to step 2');
       
-      // Add a small delay to ensure state is updated
-      setTimeout(() => {
-        onNext();
-      }, 100);
+      // Move to next step immediately
+      onNext();
       
     } catch (error) {
       console.error('Error:', error);
@@ -130,6 +129,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   };
