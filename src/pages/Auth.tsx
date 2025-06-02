@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +23,7 @@ const Auth = () => {
   useEffect(() => {
     // If user is already logged in, redirect to setup
     if (!loading && user) {
-      navigate('/', replace: true);
+      navigate('/', { replace: true });
       return;
     }
 

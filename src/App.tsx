@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from './components/AuthProvider';
 import Setup from './pages/Setup';
 import Dashboard from './pages/Dashboard';
-import Auth from './pages/Auth';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -14,7 +13,6 @@ function App() {
         <div className="min-h-screen bg-gray-50">
           <Routes>
             <Route path="/" element={<Setup />} />
-            <Route path="/auth" element={<Auth />} />
             <Route path="/setup" element={<Setup />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="*" element={<NotFound />} />
