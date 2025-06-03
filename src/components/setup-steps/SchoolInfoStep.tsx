@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BaseStepProps } from '@/types/setup';
-import { GraduationCap, MapPin, Mail, Phone, User, Calendar, Eye, Wand2 } from "lucide-react";
+import { GraduationCap, MapPin, Mail, Phone, User, Calendar, Eye, Wand2, LogIn } from "lucide-react";
 
 export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   onNext,
@@ -31,6 +31,13 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
   const [loading, setLoading] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const { toast } = useToast();
+
+  // Login portal state
+  const [loginData, setLoginData] = useState({
+    schoolName: '',
+    email: ''
+  });
+  const [loginLoading, setLoginLoading] = useState(false);
 
   const getGroqSuggestions = async (field: string, context: string) => {
     setLoadingSuggestions(true);
@@ -99,6 +106,41 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         ? prev.working_days.filter(d => d !== day)
         : [...prev.working_days, day]
     }));
+  };
+
+  const handleLogin = async () => {
+    if (!loginData.schoolName.trim() || !loginData.email.trim()) {
+      toast({
+        title: "❌ Validation Error",
+        description: "Both school name and email are required for login.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoginLoading(true);
+    try {
+      // Mock login functionality - you can extend this with actual authentication
+      console.log('Login attempt:', loginData);
+      
+      toast({
+        title: "✅ Login Successful!",
+        description: `Welcome back, ${loginData.schoolName}!`,
+        className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
+      });
+      
+      // Proceed to next step
+      onNext();
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "❌ Login Failed",
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -205,7 +247,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start">
         <div>
           <div className="text-center space-y-2">
             <GraduationCap className="h-12 w-12 text-blue-600 mx-auto" />
@@ -213,6 +255,52 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
             <p className="text-gray-600">Enter your school's basic details to get started</p>
           </div>
         </div>
+
+        {/* Login Portal */}
+        <Card className="w-80 shadow-md border border-gray-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg text-gray-800 flex items-center gap-2">
+              <LogIn className="h-5 w-5 text-blue-600" />
+              Already Registered?
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">School Name</Label>
+              <Input
+                value={loginData.schoolName}
+                onChange={(e) => setLoginData(prev => ({ ...prev, schoolName: e.target.value }))}
+                placeholder="Enter your school name"
+                className="border-gray-300 focus:border-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Email Address</Label>
+              <Input
+                type="email"
+                value={loginData.email}
+                onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter your email"
+                className="border-gray-300 focus:border-blue-500"
+              />
+            </div>
+            <Button 
+              onClick={handleLogin} 
+              disabled={loginLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {loginLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Logging in...
+                </div>
+              ) : (
+                'Login & Continue →'
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
         <Button
           type="button"
           variant="outline"
