@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BaseStepProps } from '@/types/setup';
@@ -38,6 +39,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
     email: ''
   });
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
 
   const getGroqSuggestions = async (field: string, context: string) => {
     setLoadingSuggestions(true);
@@ -129,6 +131,7 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
         className: "fixed top-4 right-4 w-96 border-l-4 border-l-green-500",
       });
       
+      setLoginDialogOpen(false);
       // Proceed to next step
       onNext();
     } catch (error) {
@@ -256,63 +259,77 @@ export const SchoolInfoStep: React.FC<BaseStepProps> = ({
           </div>
         </div>
 
-        {/* Login Portal */}
-        <Card className="w-80 shadow-md border border-gray-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-gray-800 flex items-center gap-2">
-              <LogIn className="h-5 w-5 text-blue-600" />
-              Already Registered?
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">School Name</Label>
-              <Input
-                value={loginData.schoolName}
-                onChange={(e) => setLoginData(prev => ({ ...prev, schoolName: e.target.value }))}
-                placeholder="Enter your school name"
-                className="border-gray-300 focus:border-blue-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">Email Address</Label>
-              <Input
-                type="email"
-                value={loginData.email}
-                onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="Enter your email"
-                className="border-gray-300 focus:border-blue-500"
-              />
-            </div>
-            <Button 
-              onClick={handleLogin} 
-              disabled={loginLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {loginLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Logging in...
+        <div className="flex items-center gap-4">
+          {/* Small Login Button */}
+          <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-1 text-xs"
+              >
+                <LogIn className="h-3 w-3" />
+                Login
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <LogIn className="h-5 w-5 text-blue-600" />
+                  Already Registered?
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">School Name</Label>
+                  <Input
+                    value={loginData.schoolName}
+                    onChange={(e) => setLoginData(prev => ({ ...prev, schoolName: e.target.value }))}
+                    placeholder="Enter your school name"
+                    className="border-gray-300 focus:border-blue-500"
+                  />
                 </div>
-              ) : (
-                'Login & Continue →'
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Email Address</Label>
+                  <Input
+                    type="email"
+                    value={loginData.email}
+                    onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="Enter your email"
+                    className="border-gray-300 focus:border-blue-500"
+                  />
+                </div>
+                <Button 
+                  onClick={handleLogin} 
+                  disabled={loginLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {loginLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Logging in...
+                    </div>
+                  ) : (
+                    'Login & Continue →'
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleAutoFill}
-          disabled={loadingSuggestions}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:from-blue-100 hover:to-purple-100"
-        >
-          <Wand2 className="h-5 w-5 text-blue-600" />
-          <span className="font-medium text-blue-700">
-            {loadingSuggestions ? 'Generating...' : 'AI Auto Fill'}
-          </span>
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleAutoFill}
+            disabled={loadingSuggestions}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:from-blue-100 hover:to-purple-100"
+          >
+            <Wand2 className="h-5 w-5 text-blue-600" />
+            <span className="font-medium text-blue-700">
+              {loadingSuggestions ? 'Generating...' : 'AI Auto Fill'}
+            </span>
+          </Button>
+        </div>
       </div>
 
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
